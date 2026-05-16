@@ -51,10 +51,13 @@ done
 
 ## 4. Regenerate All Numbers in the Paper
 
-### Step 1 — Export anonymized dataset
+### Step 1 — Export anonymized dataset (requires IRB-approved data)
 
 ```bash
 python tools/research/export_anonymized_dataset.py --out data/
+# NOTE: Data collection begins June 2026 after IRB approval.
+# This step cannot be run until real participant data exists in the analytics DB.
+# For development, use synthetic fixtures in tests/fixtures/ instead.
 # Outputs: data/events_anonymized.csv, data/skill_scores.csv,
 #          data/survey_responses.csv, data/expert_ratings.csv
 # PRIVATE (do not commit): data/_code_map_private.csv

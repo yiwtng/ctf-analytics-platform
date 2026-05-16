@@ -116,6 +116,20 @@ def _db_stats() -> dict:
 def generate_manifest(data_dir: str, out_path: str) -> dict:
     from datetime import datetime
 
+    # Require that IRB-approved public CSVs actually exist before generating manifest.
+    # The manifest must only describe real research data, not synthetic fixtures.
+    required = [os.path.join(data_dir, name) for name in PUBLIC_CSVS]
+    missing = [p for p in required if not os.path.exists(p)]
+    if missing:
+        print(
+            "ERROR: The following public dataset files are missing:\n  "
+            + "\n  ".join(missing)
+            + "\n\nManifest generation is only valid after IRB-approved data collection."
+            "\nDo NOT run this script on synthetic fixture data in tests/fixtures/.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
     print("Computing file hashes...")
     hashes = _file_hashes(data_dir)
 
@@ -130,6 +144,7 @@ def generate_manifest(data_dir: str, out_path: str) -> dict:
         "generated_at": datetime.now(tz=timezone.utc).isoformat(),
         "platform": "ctf-analytics-platform",
         "experiment_seed": 42,
+        "data_provenance": "IRB-approved collection, KMUTNB Human Research Ethics Committee",
         "file_hashes": hashes,
         "database": db,
     }

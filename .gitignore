@@ -47,10 +47,4 @@ secrets-to-purge.txt
 analysis/results/*.json
 analysis/results/*.tex
 
-# Anonymized public dataset — these ARE committed (no PII)
-!data/events_anonymized.csv
-!data/skill_scores.csv
-!data/survey_responses.csv
-!data/expert_ratings.csv
 !data/README.md
-!data/manifest.json
