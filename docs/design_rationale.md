@@ -2,6 +2,10 @@
 
 This document explains the learning-theory basis for each design decision
 in the platform. It is intended to support peer review and to make the
+> **Data collection status:** Extended study data collection begins June 2026 after KMUTNB IRB approval.
+> Prototype results (NCCIT 2026, n≈32) are preliminary and cited separately from the extended study.
+> See [docs/data_provenance.md](data_provenance.md) for full chain of custody.
+
 system's pedagogical assumptions explicit and falsifiable.
 
 ---

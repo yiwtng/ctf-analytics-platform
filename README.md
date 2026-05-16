@@ -34,7 +34,9 @@ Traditional CTF platforms evaluate players solely by score or number of solved c
 | Avg. solves (cohort round 1 → 3) | 4.33 → **7.00** |
 | Avg. accuracy (cohort round 1 → 3) | 65.33% → **85.67%** |
 
-> **Note:** Figures above are from the prototype phase (NCCIT 2026). The extended study (n ≈ 60, with control group) results will be reported in the journal manuscript.
+> **Data status:** Figures above are from the **NCCIT 2026 prototype (n=32)** — a preliminary study predating IRB approval for the extended study.
+> Extended study data collection begins **June 2026** after KMUTNB IRB approval. No extended-study participant data exists yet.
+> See [docs/data_provenance.md](docs/data_provenance.md) for chain of custody and the distinction between prototype and extended study data.
 
 ---
 
