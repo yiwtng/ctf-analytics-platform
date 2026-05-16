@@ -21,6 +21,10 @@ ANALYTICS_DB_PASSWORD = os.getenv("ANALYTICS_DB_PASSWORD", "analytics")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+
+if not GEMINI_API_KEY and not OPENAI_API_KEY:
+    import warnings
+    warnings.warn("Neither GEMINI_API_KEY nor OPENAI_API_KEY is set — AI report generation will use rule-based fallback only")
 GENERATE_REPORT_ALL_GAP_SECONDS = float(os.getenv("GENERATE_REPORT_ALL_GAP_SECONDS", "15"))
 ROUND_COHORT_PATH = os.path.join(os.path.dirname(__file__), "data", "round_cohort.csv")
 ROUND_COMPARISON_METRICS = [
