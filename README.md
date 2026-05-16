@@ -164,7 +164,7 @@ ctf-analytics-platform/
 │
 ├── tools/                      # Research & operational scripts
 │   ├── setup/                  # create_all_challenges.py, create_users.py
-│   ├── research/               # simulate_round_comparison_cohort.py
+│   ├── research/               # export_anonymized_dataset.py, generate_manifest.py, verify_data_provenance.py
 │   └── analysis/               # generate_all_ai_reports.py, analyze_red_behavior.py
 │
 ├── scripts/                    # Shell scripts (start, stop, setup)

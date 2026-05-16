@@ -79,8 +79,6 @@ playwright install chromium
 # Generate AI reports for all users
 python tools/analysis/generate_all_ai_reports.py
 
-# Simulate cohort study (3 participants × 3 rounds)
-python tools/research/simulate_round_comparison_cohort.py
 
 # Submit participant feedback
 python tools/research/submit_feedback_natural.py
