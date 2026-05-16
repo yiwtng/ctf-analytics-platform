@@ -1,38 +1,34 @@
 cff-version: 1.2.0
-message: "If you use this software in your research, please cite it as below."
+message: "If you use this software or dataset, please cite it as below."
+title: "CTF Analytics Platform: Automated System for Analyzing Players' Problem-Solving Skills and Providing Personalized Feedback for CTF Competitions"
 type: software
-title: "CTF Analytics Platform: Automated System for Analyzing Players' Problem-Solving Skills"
-abstract: >
-  An automated system for analyzing players' problem-solving skills and providing
-  personalized feedback for Capture the Flag (CTF) competitions. The system extends
-  CTFd with an orchestrator service and analytics database to capture event-level
-  behavior from both interactive and analysis-based challenges, deriving seven
-  skill dimensions via rule-based analysis and generating AI-powered personalized reports.
 authors:
-  - family-names: Wutthiamornthada
-    given-names: Thanagrit
-    affiliation: >
-      Department of Digital Network and Information Security Management,
-      King Mongkut's University of Technology North Bangkok (KMUTNB)
-    email: thanagrit.yiw@gmail.com
-repository-code: "https://github.com/thanagrit-wutthiamornthada/ctf-analytics-platform"
+  - family-names: "Wutthiamornthada"
+    given-names: "Thanagrit"
+    orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO: replace with real ORCID after registration
+  - family-names: "Wisitpongphan"
+    given-names: "Nawaporn"
+    orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO: replace with real ORCID
 license: MIT
-version: "1.0.0"
-date-released: "2025-04-18"
+repository-code: "https://github.com/yiwtng/ctf-analytics-platform"
+version: "2.0.0"
+date-released: "2026-06-01"
 keywords:
   - capture the flag
   - cybersecurity education
   - learning analytics
   - personalized feedback
   - behavior analysis
-  - CTFd
+  - large language models
+  - formative assessment
 preferred-citation:
   type: article
-  title: "Automated System for Analyzing Players' Problem-Solving Skills and Providing Feedback for CTF Competitions"
+  title: "Automated Analysis of Problem-Solving Skills with LLM-Generated Feedback in Capture-the-Flag Cybersecurity Education"
   authors:
-    - family-names: Wutthiamornthada
-      given-names: Thanagrit
-      affiliation: King Mongkut's University of Technology North Bangkok
-  journal: "IEEE Access"
-  year: 2025
-  notes: "Under review"
+    - family-names: "Wutthiamornthada"
+      given-names: "Thanagrit"
+    - family-names: "Wisitpongphan"
+      given-names: "Nawaporn"
+  journal: "IEEE Transactions on Learning Technologies"
+  year: 2026
+  notes: "Manuscript under review"

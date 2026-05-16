@@ -7,9 +7,9 @@
 [![Python](https://img.shields.io/badge/Python-3.12-3776AB?logo=python)](platform/orchestrator/requirements.txt)
 [![CTFd](https://img.shields.io/badge/Built%20on-CTFd-red)](https://ctfd.io)
 
-This repository contains the full implementation of a research prototype presented in:
+This repository contains the full implementation of a research system submitted to:
 
-> **T. Wutthiamornthada**, "Automated System for Analyzing Players' Problem-Solving Skills and Providing Feedback for CTF Competitions," *Independent Study, King Mongkut's University of Technology North Bangkok*, 2025.
+> **T. Wutthiamornthada and N. Wisitpongphan**, "Automated Analysis of Problem-Solving Skills with LLM-Generated Feedback in Capture-the-Flag Cybersecurity Education," *IEEE Transactions on Learning Technologies*, 2026. (Manuscript under review)
 
 ---
 
@@ -22,7 +22,7 @@ Traditional CTF platforms evaluate players solely by score or number of solved c
 - **AI-powered personalized reports** — uses Gemini / OpenAI to generate natural-language feedback in Thai
 - **Longitudinal cohort tracking** — compares player development across multiple rounds
 
-### Key Results (from real deployment)
+### Key Results (prototype phase — NCCIT 2026)
 
 | Metric | Value |
 |---|---|
@@ -33,6 +33,8 @@ Traditional CTF platforms evaluate players solely by score or number of solved c
 | Survey responses | 39 |
 | Avg. solves (cohort round 1 → 3) | 4.33 → **7.00** |
 | Avg. accuracy (cohort round 1 → 3) | 65.33% → **85.67%** |
+
+> **Note:** Figures above are from the prototype phase (NCCIT 2026). The extended study (n ≈ 60, with control group) results will be reported in the journal manuscript.
 
 ---
 
@@ -109,6 +111,23 @@ Seven skill scores (0–100) derived from event logs:
 | Time Efficiency | `max(0, 70 − 10R − 3W − 3E)` |
 
 Overall level: **Developing** (<60) / **Intermediate** (60–79) / **Advanced** (≥80)
+
+---
+
+## Research Methodology
+
+This platform supports a quasi-experimental, between-subjects study with longitudinal repeated measures (3 CTF rounds). Participants are randomly assigned to:
+
+- **Control group**: standard CTF with score-only feedback
+- **Treatment group**: standard CTF + 7-dimensional skill report + LLM-generated personalized feedback
+
+Assignment uses **block randomization** (block size = 4) to ensure balanced group allocation throughout enrollment. See [docs/design_rationale.md](docs/design_rationale.md) for the learning-theory foundation and [REPRODUCE.md](REPRODUCE.md) for full reproduction steps.
+
+---
+
+## Research Ethics
+
+This study operates under IRB approval from the KMUTNB Human Research Ethics Committee and complies with Thailand's Personal Data Protection Act (PDPA, B.E. 2562). All participant data is pseudonymized using stable participant codes (P001, P002, …). No personally identifiable information is transmitted to third-party AI APIs. See [docs/ethics/](docs/ethics/) for consent form and PDPA compliance documents.
 
 ---
 
@@ -189,13 +208,13 @@ docker compose up -d
 If you use this system or dataset in your research, please cite:
 
 ```bibtex
-@article{wutthiamornthada2025ctf,
-  title     = {Automated System for Analyzing Players' Problem-Solving Skills
-               and Providing Feedback for {CTF} Competitions},
-  author    = {Wutthiamornthada, Thanagrit},
-  journal   = {IEEE Access},
-  year      = {2025},
-  note      = {Under review}
+@article{wutthiamornthada2026ctf,
+  title   = {Automated Analysis of Problem-Solving Skills with {LLM}-Generated
+             Feedback in Capture-the-Flag Cybersecurity Education},
+  author  = {Wutthiamornthada, Thanagrit and Wisitpongphan, Nawaporn},
+  journal = {IEEE Transactions on Learning Technologies},
+  year    = {2026},
+  note    = {Manuscript under review}
 }
 ```
 
