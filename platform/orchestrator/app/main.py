@@ -323,6 +323,49 @@ def round_comparison_participant(participant_id: str):
 
 
 # =========================
+# VALIDATION (ADMIN)
+# =========================
+class ExpertRatingInput(BaseModel):
+    rater_id: str
+    participant_code: str
+    round_no: int
+    dimension: str
+    score: float = Field(ge=0, le=100)
+
+
+@app.get("/admin-validation")
+def admin_validation():
+    """Return ICC, Cronbach's alpha, and convergent validity for all dimensions."""
+    from app.validation_service import (
+        compute_icc, compute_cronbach_alpha, compute_convergent_validity, DIMENSIONS
+    )
+    icc_results = {dim: compute_icc(dim) for dim in DIMENSIONS}
+    return {
+        "status": "ok",
+        "icc_per_dimension": icc_results,
+        "cronbach_alpha": compute_cronbach_alpha(),
+        "convergent_validity_solve_count": compute_convergent_validity("solve_count"),
+    }
+
+
+@app.post("/admin-validation/expert-rating")
+def submit_expert_rating(data: ExpertRatingInput):
+    """Accept a single expert rating for a participant/dimension."""
+    from app.validation_service import store_expert_rating, ExpertRating
+    try:
+        store_expert_rating(ExpertRating(
+            rater_id=data.rater_id,
+            participant_code=data.participant_code,
+            round_no=data.round_no,
+            dimension=data.dimension,
+            score=data.score,
+        ))
+        return {"status": "ok"}
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+
+
+# =========================
 # SURVEY PAGE
 # =========================
 @app.get("/survey", response_class=HTMLResponse)
