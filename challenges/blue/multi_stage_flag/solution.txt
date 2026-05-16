@@ -1,1 +1,0 @@
-flag{UAV-GCS-02|rclone|ghost-backup-bucket}

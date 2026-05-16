@@ -1,8 +1,0 @@
-{
-  "id": "blue_hint_dependency",
-  "name": "Hint Dependency",
-  "type": "file",
-  "category": "Blue Team",
-  "value": 150,
-  "description": "Find the attacker account from the timeline. Hint is available but not required."
-}

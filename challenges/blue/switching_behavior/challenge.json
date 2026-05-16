@@ -1,8 +1,0 @@
-{
-  "id": "blue_switching_behavior",
-  "name": "Switching Behavior",
-  "type": "file",
-  "category": "Blue Team",
-  "value": 120,
-  "description": "This challenge is intentionally medium-length. It is best deployed alongside 2-3 other blue challenges to observe switching."
-}

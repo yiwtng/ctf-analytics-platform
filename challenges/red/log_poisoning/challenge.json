@@ -1,8 +1,0 @@
-{
-  "id": "red_log_poisoning",
-  "name": "Red - Log Poisoning",
-  "type": "web",
-  "internal_port": 1337,
-  "cpu_limit": "0.5",
-  "mem_limit": "512m"
-}

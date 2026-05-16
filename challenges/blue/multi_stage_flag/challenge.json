@@ -1,8 +1,0 @@
-{
-  "id": "blue_multi_stage_flag",
-  "name": "Multi-stage Flag",
-  "type": "file",
-  "category": "Blue Team",
-  "value": 200,
-  "description": "Recover hostname, tool, and exfil destination from the mini case."
-}
