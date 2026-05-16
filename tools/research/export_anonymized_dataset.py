@@ -351,10 +351,34 @@ See `docs/ethics/` for consent and compliance documents.
     print(f"[DOC] data/README.md → {out_path}")
 
 
+def _check_provenance() -> None:
+    """Refuse to export if DB contains simulation or unknown-origin users."""
+    import subprocess
+    script = os.path.join(os.path.dirname(__file__), "verify_data_provenance.py")
+    script = os.path.normpath(script)
+    if not os.path.exists(script):
+        import warnings
+        warnings.warn("verify_data_provenance.py not found — skipping provenance gate")
+        return
+    result = subprocess.run([sys.executable, script], capture_output=True, text=True)
+    if result.returncode != 0:
+        print(result.stdout)
+        print(result.stderr, file=sys.stderr)
+        print("\nExport refused: provenance check failed.", file=sys.stderr)
+        print("Reset the DB and collect real IRB-approved data before exporting.", file=sys.stderr)
+        sys.exit(1)
+    print("[provenance] OK — all users verified")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Export anonymized research dataset")
     parser.add_argument("--out", default="data/", help="Output directory")
+    parser.add_argument("--skip-provenance", action="store_true",
+                        help="Skip provenance check (development only — never use on real data)")
     args = parser.parse_args()
+
+    if not args.skip_provenance:
+        _check_provenance()
 
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)

@@ -390,10 +390,36 @@ def export_latex(results: dict[str, Any], out_path: str) -> None:
 # CLI
 # ---------------------------------------------------------------------------
 
+def _check_provenance() -> None:
+    """Refuse to run if DB contains simulation or unknown-origin users."""
+    import importlib.util, subprocess
+    script = os.path.join(os.path.dirname(__file__), "../research/verify_data_provenance.py")
+    script = os.path.normpath(script)
+    if not os.path.exists(script):
+        warnings.warn("verify_data_provenance.py not found — skipping provenance gate")
+        return
+    result = subprocess.run(
+        [sys.executable, script],
+        capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(result.stdout)
+        print(result.stderr, file=sys.stderr)
+        print("\nStatistical analysis refused: provenance check failed.", file=sys.stderr)
+        print("Reset the DB and collect real data before running analysis.", file=sys.stderr)
+        sys.exit(1)
+    print("[provenance] OK — all users verified as IRB-enrolled participants")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run full statistical analysis pipeline")
     parser.add_argument("--out-dir", default="analysis/results/", help="Output directory")
+    parser.add_argument("--skip-provenance", action="store_true",
+                        help="Skip provenance check (development only — never use on real data)")
     args = parser.parse_args()
+
+    if not args.skip_provenance:
+        _check_provenance()
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
