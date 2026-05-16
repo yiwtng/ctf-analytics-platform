@@ -200,7 +200,7 @@ def generate_user_summary(user_key: str):
         rows = db.execute(text("""
             SELECT event_type, COUNT(*) as cnt
             FROM events
-            WHERE user_key = :user_key 
+            WHERE user_key = :user_key
             GROUP BY event_type
         """), {"user_key": user_key}).mappings().all()
 

@@ -236,7 +236,7 @@ def get_latest_ai_report(user_key: str):
             "ai_report": ai_report,
             "ts": row["generated_at"],
         }
-    
+
 
 
 
