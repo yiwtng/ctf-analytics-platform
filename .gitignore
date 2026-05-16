@@ -53,3 +53,4 @@ analysis/results/*.tex
 !data/survey_responses.csv
 !data/expert_ratings.csv
 !data/README.md
+!data/manifest.json
