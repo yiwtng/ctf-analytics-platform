@@ -1206,12 +1206,38 @@ def get_user_percentile(user_key: str) -> int | None:
     return percentile
 
 
-def generate_user_report(user_key: str) -> Dict[str, Any]:
+def generate_user_report(user_key: str, user_id: int | None = None) -> Dict[str, Any]:
+    """
+    Generate skill report and (conditionally) AI report for a user.
+
+    AI report is only generated when the user is assigned to the TREATMENT
+    condition. Control-group users receive skill scores only.
+    Pass `user_id` (CTFd integer ID) to enable experiment gating;
+    omit to always generate AI report (legacy / admin use).
+    """
+    from app.experiment import is_treatment  # local import to avoid circular deps
+
     stats = aggregate_user_stats(user_key)
     scores = derive_scores(stats)
     input_signature = _build_ai_input_signature(user_key, stats, scores)
 
     skill_report_id = save_skill_report(user_key, stats, scores)
+
+    # Experiment gate: skip AI for control-group users
+    generate_ai = (user_id is None) or is_treatment(user_id)
+
+    if not generate_ai:
+        return {
+            "status": "ok",
+            "user_key": user_key,
+            "skill_report_id": skill_report_id,
+            "ai_report_id": None,
+            "scores": scores,
+            "ai_report": None,
+            "ai_cached": False,
+            "condition": "control",
+        }
+
     cached_ai = _get_cached_ai_result(user_key, input_signature)
 
     if cached_ai:
@@ -1242,6 +1268,7 @@ def generate_user_report(user_key: str) -> Dict[str, Any]:
         "scores": scores,
         "ai_report": ai_result["ai_report"],
         "ai_cached": ai_cached,
+        "condition": "treatment",
     }
 
 

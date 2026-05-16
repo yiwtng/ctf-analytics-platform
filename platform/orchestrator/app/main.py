@@ -6,6 +6,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 
+from app.experiment import is_treatment, assignment_summary
+
 from app.session_manager import start_session, stop_session
 from app.feedback.rules import generate_feedback_for_session, generate_feedback_for_user
 from app.events import (
@@ -200,21 +202,31 @@ def analyze_user_ai_save(user: str = Query(...)):
 # HTML PAGE (USER REPORT)
 # =========================
 @app.get("/report", response_class=HTMLResponse)
-def report_page(request: Request, user: str = Query(...)):
-    cached = get_latest_ai_report(user)
+def report_page(request: Request, user: str = Query(...), user_id: int | None = Query(None)):
+    """
+    Personal report page. AI feedback section is only shown to TREATMENT
+    participants. Control participants see skill scores only.
+    Pass `user_id` (CTFd integer user ID) to apply experiment gating.
+    """
+    show_ai_section = (user_id is None) or is_treatment(user_id)
+
+    cached = get_latest_ai_report(user) if show_ai_section else None
     survey = get_latest_participant_feedback(user)
 
-    if cached:
-        ai_result = {
-            "status": "ok",
-            "user_key": cached["user_key"],
-            "raw_summary": cached["raw_summary"],
-            "ai_report": cached["ai_report"],
-            "model": cached["model_name"],
-            "ts": cached["ts"],
-        }
+    if show_ai_section:
+        if cached:
+            ai_result = {
+                "status": "ok",
+                "user_key": cached["user_key"],
+                "raw_summary": cached["raw_summary"],
+                "ai_report": cached["ai_report"],
+                "model": cached["model_name"],
+                "ts": cached["ts"],
+            }
+        else:
+            ai_result = analyze_user_with_gemini(user)
     else:
-        ai_result = analyze_user_with_gemini(user)
+        ai_result = None  # control group: no AI feedback
 
     return templates.TemplateResponse(
         request=request,
@@ -222,9 +234,22 @@ def report_page(request: Request, user: str = Query(...)):
         context={
             "user_key": user,
             "ai_result": ai_result,
+            "show_ai_section": show_ai_section,
             "survey": survey,
         }
     )
+
+
+# =========================
+# EXPERIMENT (ADMIN)
+# =========================
+@app.get("/admin-experiment-summary")
+def experiment_summary():
+    """Return current control/treatment allocation balance."""
+    try:
+        return {"status": "ok", "summary": assignment_summary()}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
 
 
 # =========================
