@@ -135,7 +135,7 @@ class TestCohensD:
             result = st.cohens_d("accuracy_score", "post")
 
         assert result.get("skipped") is None or not result.get("skipped")
-        assert abs(result["d"] - 1.0) < 0.15  # allow ±0.15 tolerance
+        assert abs(result["d"] - 1.0) < 0.25  # allow ±0.25 tolerance (sampling variance at n=100)
         assert result["interpretation"] == "large"
 
     def test_negligible_effect(self):
