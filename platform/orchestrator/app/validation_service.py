@@ -364,3 +364,116 @@ def exploratory_factor_analysis() -> dict[str, Any]:
         "variance_explained": [round(float(v), 4) for v in variance[1]],
         "kmo": round(float(kmo_model), 4),
     }
+
+
+# ---------------------------------------------------------------------------
+# AI Feedback Quality Assessment (G3)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class FeedbackRating:
+    rater_id: str
+    participant_code: str
+    round_no: int
+    relevance: int       # 1–5: feedback is relevant to actual performance
+    actionability: int   # 1–5: learner can act on the feedback
+    accuracy: int        # 1–5: content is factually correct, no hallucination
+    comment: Optional[str] = None
+
+
+def store_feedback_rating(r: FeedbackRating) -> None:
+    """
+    Persist one AI feedback quality rating. Idempotent on
+    (rater_id, participant_code, round_no).
+    """
+    for field, val in [("relevance", r.relevance), ("actionability", r.actionability), ("accuracy", r.accuracy)]:
+        if not (1 <= val <= 5):
+            raise ValueError(f"{field} must be between 1 and 5, got {val}")
+
+    with _get_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                INSERT INTO feedback_rating
+                    (rater_id, participant_code, round_no, relevance, actionability, accuracy, comment)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (rater_id, participant_code, round_no)
+                DO NOTHING
+                """,
+                (r.rater_id, r.participant_code, r.round_no,
+                 r.relevance, r.actionability, r.accuracy, r.comment),
+            )
+        conn.commit()
+
+
+def feedback_quality_summary() -> dict[str, Any]:
+    """
+    Aggregate quality metrics across all expert feedback ratings.
+
+    Returns:
+        mean/SD per dimension, Cohen's kappa for relevance/accuracy
+        agreement (as categorical), percentage rated >= 4.
+    """
+    try:
+        import numpy as np
+        from scipy.stats import pearsonr
+    except ImportError:
+        return {"skipped": True, "reason": "numpy/scipy not installed"}
+
+    with _get_conn() as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
+            cur.execute("SELECT * FROM feedback_rating")
+            rows = [dict(r) for r in cur.fetchall()]
+
+    if not rows:
+        return {"n_ratings": 0, "message": "no ratings yet"}
+
+    dims = ["relevance", "actionability", "accuracy"]
+    summary: dict[str, Any] = {"n_ratings": len(rows)}
+
+    for dim in dims:
+        vals = np.array([r[dim] for r in rows], dtype=float)
+        summary[dim] = {
+            "mean": round(float(vals.mean()), 3),
+            "sd": round(float(vals.std(ddof=1)), 3) if len(vals) > 1 else 0.0,
+            "pct_ge_4": round(float((vals >= 4).mean() * 100), 1),
+        }
+
+    # Cohen's kappa between pairs of raters on relevance (treat as categorical)
+    rater_ids = list({r["rater_id"] for r in rows})
+    if len(rater_ids) >= 2:
+        kappas = []
+        for i in range(len(rater_ids)):
+            for j in range(i + 1, len(rater_ids)):
+                r1 = {(r["participant_code"], r["round_no"]): r["relevance"]
+                      for r in rows if r["rater_id"] == rater_ids[i]}
+                r2 = {(r["participant_code"], r["round_no"]): r["relevance"]
+                      for r in rows if r["rater_id"] == rater_ids[j]}
+                common = set(r1) & set(r2)
+                if len(common) >= 2:
+                    a = np.array([r1[k] for k in common])
+                    b = np.array([r2[k] for k in common])
+                    kappas.append(_cohens_kappa(a, b))
+        summary["cohens_kappa_relevance"] = (
+            round(float(np.mean(kappas)), 4) if kappas else None
+        )
+    else:
+        summary["cohens_kappa_relevance"] = None
+
+    return summary
+
+
+def _cohens_kappa(a: "np.ndarray", b: "np.ndarray") -> float:
+    """Compute Cohen's kappa for two raters on ordinal Likert categories."""
+    import numpy as np
+
+    categories = list(range(1, 6))
+    n = len(a)
+    p_obs = (a == b).mean()
+
+    p_exp = sum(
+        ((a == c).mean() * (b == c).mean()) for c in categories
+    )
+    if p_exp == 1.0:
+        return 1.0
+    return float((p_obs - p_exp) / (1 - p_exp))
