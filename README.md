@@ -183,7 +183,7 @@ See [docs/deployment.md](docs/deployment.md) for full setup instructions.
 **Quick start:**
 
 ```bash
-git clone --recurse-submodules https://github.com/thanagrit-wutthiamornthada/ctf-analytics-platform.git
+git clone --recurse-submodules https://github.com/yiwtng/ctf-analytics-platform.git
 cd ctf-analytics-platform
 cp .env.example .env   # fill in your credentials
 docker compose up -d
