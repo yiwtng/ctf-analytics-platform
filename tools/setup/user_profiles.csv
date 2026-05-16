@@ -1,0 +1,14 @@
+username,team_role,skill_level,behavior_type,red_focus,blue_focus,hint_tendency,wrong_submit_tendency,persistence_level,notes
+earth.n,red,advanced,efficient,web+protocol,low,low,low,high,อ่านโจทย์ก่อนลงมือและแก้ได้ค่อนข้างเร็ว
+bright.t,blue,intermediate,careful_analyst,low,log+intel,medium,low,medium,อ่านโจทย์ละเอียดและใช้เวลาไล่เหตุผล
+gun.k,red,intermediate,retry_spammer,protocol,low,low,high,high,ชอบลองหลายครั้งก่อนสรุปคำตอบ
+fluke.p,red,beginner,web_struggle,web,low,medium,high,medium,ทำโจทย์เว็บได้แต่หลงทางง่าย
+bank.s,red,intermediate,aggressive,protocol+ssh,low,low,high,high,ชอบลองเร็วและกดเริ่มซ้ำถ้าไม่ผ่าน
+mix.m,blue,intermediate,hint_dependent,low,intel+timeline,high,medium,medium,มักใช้ hint ก่อนค่อยวิเคราะห์ต่อ
+boss.t,red,advanced,protocol_pro,protocol,low,low,low,high,เข้าใจ flow ของ service และโปรโตคอลดี
+time.r,blue,beginner,slow_reader,low,log+artifact,medium,medium,low,อ่านช้าและบางครั้งไม่ทำครบทุกข้อ
+ohm.l,red,beginner,pivot_fail,ssh,low,low,high,low,พยายามทำ ssh แต่มีแนวโน้มยอมแพ้
+nine.w,red,intermediate,mixed,web+ssh,low,low,medium,medium,ทำได้หลายแบบแต่ผลงานไม่คงที่
+fah.p,blue,advanced,careful_analyst,low,intel+correlation,low,low,high,วิเคราะห์เป็นระบบและตอบค่อนข้างแม่น
+nam.c,blue,intermediate,mixed,low,log+pattern,medium,medium,medium,ทำได้เรื่อย ๆ แต่บางครั้งเดาก่อน
+ploy.s,red,intermediate,methodical,web+log,low,low,low,high,ทำเป็นขั้นตอนและมักมีความแม่นยำดี

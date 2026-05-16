@@ -1,0 +1,8 @@
+08:10 user: intern01 login success
+08:12 user: backupsvc login success
+08:13 user: intern01 privilege escalation failed
+08:18 user: admin-ops login failure
+08:19 user: backupsvc unusual PowerShell spawn
+08:21 user: backupsvc outbound archive transfer
+
+Flag format: flag{username}

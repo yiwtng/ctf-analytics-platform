@@ -1,0 +1,166 @@
+services:
+  traefik:
+    image: traefik:v3.6.1
+    container_name: traefik
+    command: --configFile=/etc/traefik/traefik.yml
+    ports:
+      - "80:80"
+      - "443:443"
+      - "${PUBLIC_NC_PORT:-31000}:31000"
+      - "${PUBLIC_SSH_PORT:-32222}:32222"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./platform/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./platform/traefik/logs:/logs
+      - ./platform/traefik/dynamic:/dynamic
+      - ./platform/traefik/letsencrypt:/letsencrypt
+    networks:
+      - edge
+    restart: unless-stopped
+
+  ctfd:
+    build:
+      context: ./platform/ctfd
+    image: ctfd/ctfd:latest
+    container_name: ctfd
+    depends_on:
+      ctfd_db:
+        condition: service_healthy
+      ctfd_cache:
+        condition: service_started
+    environment:
+      - DATABASE_URL=postgresql://${CTFD_DB_USER}:${CTFD_DB_PASS}@ctfd_db:5432/${CTFD_DB_NAME}
+      - REDIS_URL=redis://ctfd_cache:6379
+      - SECRET_KEY=${CTFD_SECRET_KEY}
+      - ORCH_PUBLIC_BASE=${ORCH_PUBLIC_BASE}
+    volumes:
+      - ctfd_uploads:/var/uploads
+      - ctfd_data:/opt/CTFd/CTFd/data
+      - ./apt42_ctfd_themes/ftheme:/opt/CTFd/CTFd/themes/ftheme
+      - ./apt42_ctfd_themes/watchdogs:/opt/CTFd/CTFd/themes/watchdogs
+      - ./platform/ctfd/plugins/admin_reports:/opt/CTFd/CTFd/plugins/admin_reports
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ctfd.rule=Host(`${CTF_DOMAIN}`)"
+      - "traefik.http.routers.ctfd.entrypoints=web"
+      - "traefik.http.services.ctfd.loadbalancer.server.port=8000"
+      - "traefik.docker.network=ctf_edge"
+    networks:
+      - edge
+      - backend
+    restart: unless-stopped
+
+  ctfd_db:
+    image: postgres:16
+    container_name: ctfd_db
+    environment:
+      - POSTGRES_USER=${CTFD_DB_USER}
+      - POSTGRES_PASSWORD=${CTFD_DB_PASS}
+      - POSTGRES_DB=${CTFD_DB_NAME}
+    volumes:
+      - ctfd_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CTFD_DB_USER} -d ${CTFD_DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - backend
+    restart: unless-stopped
+
+  ctfd_cache:
+    image: redis:7
+    container_name: ctfd_cache
+    networks:
+      - backend
+    restart: unless-stopped
+
+  analytics_db:
+    image: postgres:16
+    container_name: analytics_db
+    ports:
+      - "5433:5432"
+    environment:
+      - POSTGRES_USER=${ANALYTICS_DB_USER}
+      - POSTGRES_PASSWORD=${ANALYTICS_DB_PASS}
+      - POSTGRES_DB=${ANALYTICS_DB_NAME}
+    volumes:
+      - analytics_db:/var/lib/postgresql/data
+      - ./database/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ANALYTICS_DB_USER} -d ${ANALYTICS_DB_NAME}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - backend
+    restart: unless-stopped
+
+  orchestrator:
+    build:
+      context: ./platform/orchestrator
+    container_name: orchestrator
+    depends_on:
+      analytics_db:
+        condition: service_healthy
+    environment:
+      - MAX_CONCURRENT_SESSIONS=${MAX_CONCURRENT_SESSIONS}
+      - SESSION_TTL_MIN=${SESSION_TTL_MIN}
+      - ANALYTICS_DATABASE_URL=postgresql://${ANALYTICS_DB_USER}:${ANALYTICS_DB_PASS}@analytics_db:5432/${ANALYTICS_DB_NAME}
+      - DOCKER_NETWORK=${DOCKER_NETWORK}
+      - PUBLIC_HTTP_BASE=${PUBLIC_HTTP_BASE}
+      - WEB_BASE_DOMAIN=${WEB_BASE_DOMAIN}
+      - PUBLIC_NC_HOST=${PUBLIC_NC_HOST}
+      - PUBLIC_NC_PORT=${PUBLIC_NC_PORT}
+      - PUBLIC_SSH_HOST=${PUBLIC_SSH_HOST}
+      - PUBLIC_SSH_PORT=${PUBLIC_SSH_PORT}
+      - ORCH_PUBLIC_BASE=${ORCH_PUBLIC_BASE}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODELS=gemini-2.5-flash,gemini-2.5-flash-lite
+      - GEMINI_PER_MODEL_MAX_RETRIES=2
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - AI_PROVIDER=${AI_PROVIDER:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./challenges:/app/challenges
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.orch.rule=Host(`${ORCH_DOMAIN}`)"
+      - "traefik.http.routers.orch.entrypoints=web"
+      - "traefik.http.services.orch.loadbalancer.server.port=8001"
+      - "traefik.docker.network=ctf_edge"
+    networks:
+      - edge
+      - backend
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./platform/monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./platform/monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    networks:
+      - backend
+    restart: unless-stopped
+
+networks:
+  edge:
+    name: ctf_edge
+  backend:
+    name: ctf_backend
+
+volumes:
+  ctfd_db:
+  ctfd_uploads:
+  ctfd_data:
+  analytics_db:
+  grafana_data:

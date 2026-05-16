@@ -1,0 +1,8 @@
+{
+  "id": "blue_slow_think_fast_guess",
+  "name": "Slow Think Fast Guess",
+  "type": "file",
+  "category": "Blue Team",
+  "value": 100,
+  "description": "Read the alert summary carefully. The answer is directly present, but easy to misread."
+}

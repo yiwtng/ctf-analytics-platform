@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Feedback</title>
+  <style>
+    body {
+      background: #05070d;
+      color: #e6f0ff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .wrap {
+      max-width: 1280px;
+      margin: 32px auto;
+      padding: 0 20px 40px;
+    }
+    h1 {
+      margin-bottom: 8px;
+      font-size: 40px;
+      letter-spacing: 1px;
+    }
+    .sub {
+      color: #9fb3d1;
+      margin-bottom: 22px;
+    }
+    .nav, .toolbar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+    }
+    .btn-blue { background: #2f6fed; color: #fff; }
+    .btn-outline {
+      background: #101a2c;
+      color: #e6f0ff;
+      border: 1px solid #30415f;
+    }
+    .input {
+      min-width: 260px;
+      background: #0c1322;
+      color: #e6f0ff;
+      border: 1px solid #22314f;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .box, .card {
+      background: #0c1322;
+      border: 1px solid #1b2940;
+      border-radius: 14px;
+    }
+    .box {
+      padding: 14px;
+    }
+    .box .label {
+      font-size: 12px;
+      color: #8fa8d6;
+    }
+    .box .value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    .status {
+      margin-bottom: 16px;
+      color: #8fa8d6;
+    }
+    .list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 18px;
+    }
+    .card {
+      padding: 18px;
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+    .username {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .meta {
+      color: #9fb3d1;
+      margin-top: 4px;
+      line-height: 1.8;
+    }
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .mini {
+      background: #101a2c;
+      border: 1px solid #1b2940;
+      border-radius: 14px;
+      padding: 10px 12px;
+    }
+    .mini .label {
+      font-size: 12px;
+      color: #8fa8d6;
+    }
+    .mini .value {
+      font-size: 20px;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+    .detail {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 14px;
+    }
+    .detail-block {
+      background: #101a2c;
+      border: 1px solid #1b2940;
+      border-radius: 14px;
+      padding: 14px;
+    }
+    .detail-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #dce8ff;
+    }
+    @media (max-width: 900px) {
+      .summary, .score-grid, .detail {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ADMIN FEEDBACK CENTER</h1>
+    <div class="sub">หน้ารวมแบบประเมินของผู้เล่นทั้งหมดสำหรับผู้ดูแลระบบ</div>
+
+    <div class="nav">
+      <a class="btn btn-outline" href="/admin-reports">หน้า Report</a>
+      <a class="btn btn-outline" href="/admin-feedback">หน้า Feedback</a>
+      <a class="btn btn-outline" href="/admin-round-comparison">หน้าเปรียบเทียบ 3 รอบ</a>
+    </div>
+
+    <div class="toolbar">
+      <button id="refreshBtn" class="btn btn-blue">โหลด Feedback ล่าสุด</button>
+      <input id="searchBox" class="input" type="text" placeholder="ค้นหาชื่อผู้เล่น">
+    </div>
+
+    <div id="summaryBar" class="summary"></div>
+    <div id="statusText" class="status"></div>
+    <div id="root">กำลังโหลดข้อมูล...</div>
+  </div>
+
+  <script>
+    const ORCH_BASE = {{ orch_base|tojson }};
+    let ALL_FEEDBACK = [];
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function miniBox(label, value) {
+      return `
+        <div class="box">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value">${escapeHtml(value)}</div>
+        </div>
+      `;
+    }
+
+    function scoreBadge(label, value) {
+      return `
+        <div class="mini">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value">${Number(value || 0)}</div>
+        </div>
+      `;
+    }
+
+    function renderSummaryBar(items) {
+      const total = items.length;
+      const avgUsability = total ? (items.reduce((s, x) => s + Number(x.usability_score || 0), 0) / total).toFixed(2) : "0";
+      const avgChallenge = total ? (items.reduce((s, x) => s + Number(x.challenge_quality_score || 0), 0) / total).toFixed(2) : "0";
+      const avgConfidence = total ? (items.reduce((s, x) => s + Number(x.confidence_improvement_score || 0), 0) / total).toFixed(2) : "0";
+
+      document.getElementById("summaryBar").innerHTML = [
+        miniBox("จำนวน feedback", total),
+        miniBox("เฉลี่ย usability", avgUsability),
+        miniBox("เฉลี่ยคุณภาพโจทย์", avgChallenge),
+        miniBox("เฉลี่ยความมั่นใจ", avgConfidence),
+      ].join("");
+    }
+
+    function renderCard(item) {
+      return `
+        <div class="card">
+          <div class="card-top">
+            <div>
+              <div class="username">${escapeHtml(item.user_key || "-")}</div>
+              <div class="meta">บันทึกล่าสุด: ${escapeHtml(item.ts || "-")}</div>
+            </div>
+          </div>
+
+          <div class="score-grid">
+            ${scoreBadge("Usability", item.usability_score)}
+            ${scoreBadge("Challenge", item.challenge_quality_score)}
+            ${scoreBadge("Recommend", item.recommendation_quality_score)}
+            ${scoreBadge("Confidence", item.confidence_improvement_score)}
+          </div>
+
+          <div class="detail">
+            <div class="detail-block">
+              <div class="detail-title">ส่วนที่ชอบ</div>
+              <pre>${escapeHtml(item.favorite_part || "-")}</pre>
+            </div>
+            <div class="detail-block">
+              <div class="detail-title">สิ่งที่ควรปรับปรุง</div>
+              <pre>${escapeHtml(item.improvement_point || "-")}</pre>
+            </div>
+            <div class="detail-block">
+              <div class="detail-title">ความคิดเห็นเพิ่มเติม</div>
+              <pre>${escapeHtml(item.comments || "-")}</pre>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function fetchAllFeedback() {
+      const res = await fetch(`${ORCH_BASE}/feedback/list`);
+      if (!res.ok) throw new Error(`โหลด feedback list ไม่สำเร็จ (${res.status})`);
+      return await res.json();
+    }
+
+    function renderList() {
+      const root = document.getElementById("root");
+      const q = (document.getElementById("searchBox").value || "").trim().toLowerCase();
+      const filtered = ALL_FEEDBACK.filter((r) =>
+        String(r.user_key || "").toLowerCase().includes(q)
+      );
+
+      renderSummaryBar(filtered);
+
+      if (!filtered.length) {
+        root.innerHTML = `<div style="color:#9fb3d1;">ไม่พบ feedback ที่ตรงกับเงื่อนไข</div>`;
+        return;
+      }
+
+      root.innerHTML = `<div class="list">${filtered.map(renderCard).join("")}</div>`;
+    }
+
+    async function loadFeedback() {
+      const status = document.getElementById("statusText");
+      status.innerText = "กำลังโหลด feedback ล่าสุด ...";
+      try {
+        const all = await fetchAllFeedback();
+        ALL_FEEDBACK = all.results || [];
+        renderList();
+        status.innerText = "โหลด feedback สำเร็จ";
+      } catch (e) {
+        console.error(e);
+        document.getElementById("root").innerHTML = `
+          <div style="background:#2a1212;border:1px solid #5a2323;color:#ffb4b4;padding:16px;border-radius:12px;">
+            โหลด feedback ไม่สำเร็จ<br>
+            <span style="font-size:14px;color:#ffd2d2;">${escapeHtml(e.message || e)}</span>
+          </div>
+        `;
+        status.innerText = "เกิดข้อผิดพลาด";
+      }
+    }
+
+    document.getElementById("refreshBtn").onclick = loadFeedback;
+    document.getElementById("searchBox").addEventListener("input", renderList);
+
+    loadFeedback();
+  </script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  user_key AS \"ผู้เล่น\",\n  COUNT(*) FILTER (WHERE event_type = 'START_INSTANCE_UI_CLICK') AS \"จำนวนกดเริ่ม\",\n  COUNT(*) FILTER (WHERE event_type = 'START_INSTANCE_FAILED') AS \"เริ่มไม่สำเร็จ\",\n  COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND payload::text ILIKE '%wrong%') AS \"ส่งผิด\",\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_GIVE_UP') AS \"ยอมแพ้\",\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_INTERACTION_ERROR') AS \"interaction error\",\n  CASE\n    WHEN COUNT(*) FILTER (WHERE event_type = 'START_INSTANCE_UI_CLICK') >= 6 THEN 'สูง'\n    WHEN COUNT(*) FILTER (WHERE event_type = 'START_INSTANCE_UI_CLICK') >= 3 THEN 'ปานกลาง'\n    ELSE 'ต่ำ'\n  END AS \"ระดับความผิดปกติ\"\nFROM events\nGROUP BY user_key\nORDER BY \"จำนวนกดเริ่ม\" DESC, \"ส่งผิด\" DESC;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "ความผิดปกติ: ผู้เล่นที่กดเริ่มหรือ retry มากผิดปกติ",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 2,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  challenge_id AS \"โจทย์\",\n  COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND payload::text ILIKE '%wrong%') AS \"ส่งผิด\",\n  COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND (payload::text ILIKE '%submitted%' OR payload::text ILIKE '%correct%')) AS \"ส่งถูก\",\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_GIVE_UP') AS \"ยอมแพ้\",\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_INTERACTION_ERROR') AS \"interaction error\",\n  CASE\n    WHEN COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND payload::text ILIKE '%wrong%') >= 8 THEN 'สูง'\n    WHEN COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND payload::text ILIKE '%wrong%') >= 4 THEN 'ปานกลาง'\n    ELSE 'ต่ำ'\n  END AS \"ระดับความผิดปกติ\"\nFROM events\nWHERE challenge_id IS NOT NULL\nGROUP BY challenge_id\nORDER BY \"ส่งผิด\" DESC, \"interaction error\" DESC;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "ความผิดปกติ: โจทย์ที่มีปัญหาสูง",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  user_key AS \"ผู้เล่น\",\n  challenge_id AS \"โจทย์\",\n  COUNT(*) FILTER (WHERE event_type = 'TCP_BAD_AUTH') AS \"bad auth\",\n  COUNT(*) FILTER (WHERE event_type = 'TCP_MALFORMED') AS \"malformed\",\n  COUNT(*) FILTER (WHERE event_type = 'TCP_HELLO_OK') AS \"hello ok\",\n  COUNT(*) FILTER (WHERE event_type = 'TCP_AUTH_ATTEMPT') AS \"auth attempt\",\n  CASE\n    WHEN COUNT(*) FILTER (WHERE event_type = 'TCP_BAD_AUTH') >= 5 THEN 'มีแนวโน้ม brute force'\n    WHEN COUNT(*) FILTER (WHERE event_type = 'TCP_MALFORMED') >= 3 THEN 'มีแนวโน้มสับสนโปรโตคอล'\n    ELSE 'ปกติ'\n  END AS \"สรุป\"\nFROM events\nWHERE challenge_id = 'red_protocol_probe'\nGROUP BY user_key, challenge_id\nORDER BY \"bad auth\" DESC, \"malformed\" DESC;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "ความผิดปกติ: การใช้โปรโตคอลผิดพลาด / brute force",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "id": 4,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  user_key AS \"ผู้เล่น\",\n  challenge_id AS \"โจทย์\",\n  COUNT(*) FILTER (WHERE event_type = 'START_INSTANCE_UI_CLICK') AS \"จำนวนกดเริ่ม\",\n  COUNT(*) FILTER (WHERE event_type = 'INSTANCE_READY_UI') AS \"พร้อมใช้งาน\",\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_INTERACTION_ERROR') AS \"interaction error\",\n  COUNT(*) FILTER (WHERE event_type = 'SSH_COMMAND') AS \"ssh command\",\n  CASE\n    WHEN COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_INTERACTION_ERROR') >= 2 AND COUNT(*) FILTER (WHERE event_type = 'SSH_COMMAND') = 0 THEN 'มีปัญหาด้าน SSH ชัดเจน'\n    WHEN COUNT(*) FILTER (WHERE event_type = 'START_INSTANCE_UI_CLICK') >= 3 AND COUNT(*) FILTER (WHERE event_type = 'SSH_COMMAND') = 0 THEN 'เริ่มซ้ำแต่ยังไม่ไปต่อ'\n    ELSE 'ปกติ'\n  END AS \"สรุป\"\nFROM events\nWHERE challenge_id = 'red_pivot_notes'\nGROUP BY user_key, challenge_id\nORDER BY \"interaction error\" DESC, \"จำนวนกดเริ่ม\" DESC;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "ความผิดปกติ: รูปแบบล้มเหลวในโจทย์ SSH / Pivot",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 17
+      },
+      "id": 5,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  date_trunc('minute', ts) AS \"time\",\n  event_type AS metric,\n  COUNT(*) AS value\nFROM events\nWHERE event_type IN (\n  'START_INSTANCE_UI_CLICK',\n  'START_INSTANCE_FAILED',\n  'CHALLENGE_INTERACTION_ERROR',\n  'CHALLENGE_GIVE_UP',\n  'TCP_BAD_AUTH',\n  'TCP_MALFORMED'\n)\nGROUP BY 1, 2\nORDER BY 1, 2;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "เส้นเวลาเหตุการณ์ผิดปกติ",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 26
+      },
+      "id": 6,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  user_key AS \"ผู้เล่น\",\n  COUNT(*) FILTER (WHERE event_type = 'HINT_UNLOCK_UI') AS \"ใช้ hint\",\n  COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND payload::text ILIKE '%wrong%') AS \"ส่งผิด\",\n  COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND (payload::text ILIKE '%submitted%' OR payload::text ILIKE '%correct%')) AS \"ส่งถูก\",\n  ROUND(\n    (\n      COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND payload::text ILIKE '%wrong%')::numeric\n      /\n      NULLIF(\n        COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND (payload::text ILIKE '%wrong%' OR payload::text ILIKE '%submitted%' OR payload::text ILIKE '%correct%')),\n        0\n      )\n    ) * 100, 2\n  ) AS \"อัตราส่งผิด (%)\",\n  CASE\n    WHEN COUNT(*) FILTER (WHERE event_type = 'HINT_UNLOCK_UI') >= 4 THEN 'พึ่งพา hint สูง'\n    WHEN COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT' AND payload::text ILIKE '%wrong%') >= 4 THEN 'ความแม่นยำต่ำ'\n    ELSE 'ปกติ'\n  END AS \"สรุป\"\nFROM events\nWHERE challenge_id LIKE 'blue_%'\nGROUP BY user_key\nORDER BY \"ใช้ hint\" DESC, \"ส่งผิด\" DESC;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "ความผิดปกติ: การพึ่ง hint และความแม่นยำต่ำฝั่ง Blue",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 26
+      },
+      "id": 7,
+      "options": {
+        "showHeader": true
+      },
+      "targets": [
+        {
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT\n  user_key AS \"ผู้เล่น\",\n  challenge_id AS \"โจทย์\",\n  MIN(ts) FILTER (WHERE event_type = 'CHALLENGE_OPEN_UI') AS \"เวลาเปิดโจทย์\",\n  MIN(ts) FILTER (WHERE event_type = 'FLAG_SUBMIT_UI') AS \"เวลาส่งครั้งแรก\",\n  EXTRACT(EPOCH FROM (\n    MIN(ts) FILTER (WHERE event_type = 'FLAG_SUBMIT_UI')\n    - MIN(ts) FILTER (WHERE event_type = 'CHALLENGE_OPEN_UI')\n  )) AS \"วินาทีก่อนส่งครั้งแรก\",\n  CASE\n    WHEN EXTRACT(EPOCH FROM (\n      MIN(ts) FILTER (WHERE event_type = 'FLAG_SUBMIT_UI')\n      - MIN(ts) FILTER (WHERE event_type = 'CHALLENGE_OPEN_UI')\n    )) < 15 THEN 'เร็วผิดปกติมาก'\n    WHEN EXTRACT(EPOCH FROM (\n      MIN(ts) FILTER (WHERE event_type = 'FLAG_SUBMIT_UI')\n      - MIN(ts) FILTER (WHERE event_type = 'CHALLENGE_OPEN_UI')\n    )) < 45 THEN 'เร็วผิดปกติ'\n    ELSE 'ปกติ'\n  END AS \"สรุป\"\nFROM events\nWHERE challenge_id IS NOT NULL\nGROUP BY user_key, challenge_id\nHAVING MIN(ts) FILTER (WHERE event_type = 'CHALLENGE_OPEN_UI') IS NOT NULL\n   AND MIN(ts) FILTER (WHERE event_type = 'FLAG_SUBMIT_UI') IS NOT NULL\nORDER BY \"วินาทีก่อนส่งครั้งแรก\" ASC NULLS LAST\nLIMIT 50;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "ความผิดปกติ: การส่งคำตอบเร็วผิดปกติ",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "anomaly",
+    "behavior",
+    "cyber-range",
+    "thai"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "แดชบอร์ดวิเคราะห์พฤติกรรมผิดปกติ",
+  "uid": "behavior-anomaly-analytics-th",
+  "version": 1,
+  "weekStart": ""
+}

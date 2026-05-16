@@ -1,0 +1,8 @@
+IR NOTESET v2
+
+- Old indicator (deprecated): 10.10.10.50
+- Legacy host observed in lab last month: 172.16.8.14
+- Packet excerpt mentions repeated TLS to 45.77.18.201
+- Web proxy report says destination tagged as "unknown-c2"
+
+Flag format: flag{IP}

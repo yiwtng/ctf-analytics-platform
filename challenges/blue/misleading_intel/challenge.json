@@ -1,0 +1,8 @@
+{
+  "id": "blue_misleading_intel",
+  "name": "Misleading Intel",
+  "type": "file",
+  "category": "Blue Team",
+  "value": 100,
+  "description": "Analyze the report and identify the real C2 IP. Some notes are outdated on purpose."
+}

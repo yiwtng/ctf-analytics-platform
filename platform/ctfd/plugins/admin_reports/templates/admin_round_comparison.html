@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <title>Admin Round Comparison</title>
+  <style>
+    body {
+      background: #05070d;
+      color: #e6f0ff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .wrap {
+      max-width: 1400px;
+      margin: 32px auto;
+      padding: 0 20px 40px;
+    }
+    h1 {
+      margin-bottom: 8px;
+      font-size: 40px;
+      letter-spacing: 1px;
+    }
+    .sub {
+      color: #9fb3d1;
+      margin-bottom: 22px;
+      line-height: 1.7;
+    }
+    .nav, .toolbar, .summary, .round-grid, .delta-grid, .ai-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .nav, .toolbar {
+      grid-template-columns: repeat(auto-fit, minmax(180px, max-content));
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .summary {
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-bottom: 18px;
+    }
+    .round-grid {
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      margin-top: 16px;
+    }
+    .delta-grid, .ai-grid {
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      margin-top: 14px;
+    }
+    .btn {
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      text-align: center;
+    }
+    .btn-blue { background: #2f6fed; color: #fff; }
+    .btn-outline {
+      background: #101a2c;
+      color: #e6f0ff;
+      border: 1px solid #30415f;
+    }
+    .input {
+      min-width: 260px;
+      background: #0c1322;
+      color: #e6f0ff;
+      border: 1px solid #22314f;
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .box, .card, .round-card, .delta-card, .ai-card {
+      background: #0c1322;
+      border: 1px solid #1b2940;
+      border-radius: 14px;
+    }
+    .box, .delta-card, .ai-card {
+      padding: 14px;
+    }
+    .card {
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+    .box .label, .meta, .small {
+      color: #8fa8d6;
+    }
+    .box .value {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+    .participant-name {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .participant-sub {
+      margin-top: 6px;
+      color: #9fb3d1;
+    }
+    .round-card {
+      padding: 16px;
+    }
+    .round-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      background: #1e3a5f;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    .badge.ok { background: #14532d; }
+    .badge.pending { background: #5b3b12; }
+    ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+      line-height: 1.7;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border-bottom: 1px solid #22314f;
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      color: #9fb3d1;
+      font-size: 13px;
+    }
+    .status {
+      margin-bottom: 16px;
+      color: #9fb3d1;
+    }
+    .empty {
+      color: #9fb3d1;
+      padding: 16px;
+      border: 1px dashed #30415f;
+      border-radius: 12px;
+    }
+    .delta-up { color: #4ade80; }
+    .delta-down { color: #f87171; }
+    .delta-same { color: #cbd5e1; }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #dce8ff;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>ADMIN ROUND COMPARISON</h1>
+    <div class="sub">
+      เปรียบเทียบพัฒนาการของผู้เล่น 3 รอบโดยใช้ user ใหม่ในแต่ละรอบ เช่น `bank.s01` -> `bank.s02` -> `bank.s03`
+      เพื่อดูว่าหลังรู้จุดบกพร่องในรอบแรกแล้ว ผลคะแนนและคำแนะนำจาก AI เปลี่ยนไปอย่างไร
+    </div>
+
+    <div class="nav">
+      <a class="btn btn-outline" href="/admin-reports">หน้า Report</a>
+      <a class="btn btn-outline" href="/admin-feedback">หน้า Feedback</a>
+      <a class="btn btn-outline" href="/admin-round-comparison">หน้าเปรียบเทียบ 3 รอบ</a>
+    </div>
+
+    <div class="toolbar">
+      <button id="refreshBtn" class="btn btn-blue">โหลดผลเปรียบเทียบล่าสุด</button>
+      <input id="searchBox" class="input" type="text" placeholder="ค้นหาชื่อ participant หรือ username">
+    </div>
+
+    <div id="summaryBar" class="summary"></div>
+    <div id="statusText" class="status"></div>
+    <div id="root">กำลังโหลดข้อมูล...</div>
+  </div>
+
+  <script>
+    const ORCH_BASE = {{ orch_base|tojson }};
+    let ALL_PARTICIPANTS = [];
+    let LAST_SUMMARY = {};
+
+    function orchBaseOk() {
+      return typeof ORCH_BASE === "string" && ORCH_BASE.length > 0 && ORCH_BASE.startsWith("http");
+    }
+
+    function normalizeRecommendations(ai) {
+      const r = ai && ai.recommendations;
+      if (Array.isArray(r)) return r;
+      if (typeof r === "string" && r.trim()) return [r];
+      return [];
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function safeArray(value) {
+      return Array.isArray(value) ? value : [];
+    }
+
+    function miniBox(label, value) {
+      return `
+        <div class="box">
+          <div class="label">${escapeHtml(label)}</div>
+          <div class="value">${escapeHtml(value)}</div>
+        </div>
+      `;
+    }
+
+    function renderSummaryBar(summary, participants) {
+      document.getElementById("summaryBar").innerHTML = [
+        miniBox("ผู้เข้าร่วมใน cohort", summary.participants_total || participants.length),
+        miniBox("ครบทั้ง 3 รอบ", summary.participants_with_all_rounds || 0),
+        miniBox("เฉลี่ย Accuracy Delta", summary.avg_accuracy_delta || 0),
+        miniBox("เฉลี่ย Solves Delta", summary.avg_solves_delta || 0),
+      ].join("");
+    }
+
+    function renderMetricRows(metricChanges) {
+      if (!metricChanges || !metricChanges.length) {
+        return `<div class="empty">ยังไม่มีข้อมูลคะแนนเพียงพอสำหรับเทียบรอบ</div>`;
+      }
+
+      const rows = metricChanges.map((item) => {
+        const cls = item.direction === "up" ? "delta-up" : item.direction === "down" ? "delta-down" : "delta-same";
+        const deltaText = item.delta > 0 ? `+${item.delta}` : `${item.delta}`;
+        return `
+          <tr>
+            <td>${escapeHtml(item.label)}</td>
+            <td>${Number(item.start || 0)}</td>
+            <td>${Number(item.end || 0)}</td>
+            <td class="${cls}">${escapeHtml(deltaText)}</td>
+          </tr>
+        `;
+      }).join("");
+
+      return `
+        <table>
+          <thead>
+            <tr>
+              <th>Metric</th>
+              <th>Baseline</th>
+              <th>Latest</th>
+              <th>Delta</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>
+      `;
+    }
+
+    function renderRoundCard(round) {
+      if (!round || typeof round !== "object") {
+        return `<div class="round-card"><div class="empty">ข้อมูลรอบไม่ครบ</div></div>`;
+      }
+      const score = round.score_snapshot || {};
+      const ai = round.ai_report || {};
+      const feedback = round.participant_feedback || {};
+      const badgeClass = round.report_ready ? "ok" : "pending";
+      const badgeText = round.report_ready ? "พร้อมเปรียบเทียบ" : "ยังไม่มีรายงาน";
+      const recs = normalizeRecommendations(ai);
+      const summaryText = (ai.summary && String(ai.summary).trim()) ? String(ai.summary) : "— ยังไม่มีสรุปจาก AI —";
+
+      return `
+        <div class="round-card">
+          <div class="round-title">รอบ ${round.round_number}</div>
+          <div class="small">${escapeHtml(round.username)}${round.notes ? ` | ${escapeHtml(round.notes)}` : ""}</div>
+          <div style="margin-top:10px;">
+            <span class="badge ${badgeClass}">${escapeHtml(badgeText)}</span>
+            <a class="badge" href="${escapeHtml(ORCH_BASE)}/report?user=${encodeURIComponent(round.username)}" target="_blank" rel="noreferrer">เปิดรายงานรอบนี้</a>
+          </div>
+
+          ${round.report_ready ? `
+            <table>
+              <tbody>
+                <tr><th>Level</th><td>${escapeHtml(score.overall_level || "-")}</td></tr>
+                <tr><th>Solves</th><td>${Number(score.total_solves || 0)}</td></tr>
+                <tr><th>Accuracy</th><td>${Number(score.accuracy_score || 0)}</td></tr>
+                <tr><th>Persistence</th><td>${Number(score.persistence_score || 0)}</td></tr>
+                <tr><th>Protocol</th><td>${Number(score.protocol_score || 0)}</td></tr>
+                <tr><th>Web</th><td>${Number(score.web_recon_score || 0)}</td></tr>
+                <tr><th>SSH</th><td>${Number(score.ssh_pivot_score || 0)}</td></tr>
+                <tr><th>Blue</th><td>${Number(score.blue_analysis_score || 0)}</td></tr>
+              </tbody>
+            </table>
+            <div style="margin-top:10px;"><strong>AI Summary</strong></div>
+            <pre>${escapeHtml(summaryText)}</pre>
+            <div style="margin-top:10px;"><strong>AI Recommendations</strong></div>
+            <ul>${recs.map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>— ยังไม่มีรายการคำแนะนำ —</li>"}</ul>
+            <div style="margin-top:10px;"><strong>Self Feedback</strong></div>
+            <ul>
+              <li>Usability: ${Number(feedback.usability_score || 0)}</li>
+              <li>Challenge Quality: ${Number(feedback.challenge_quality_score || 0)}</li>
+              <li>Recommendation Quality: ${Number(feedback.recommendation_quality_score || 0)}</li>
+              <li>Confidence Improvement: ${Number(feedback.confidence_improvement_score || 0)}</li>
+            </ul>
+          ` : `
+            <div class="empty" style="margin-top:12px;">รอให้ผู้เล่นจบรอบและสร้าง report ก่อน</div>
+          `}
+        </div>
+      `;
+    }
+
+    function renderAiDiff(delta) {
+      if (!delta) {
+        return `<div class="delta-card"><div class="empty">ยังไม่มีข้อมูลการเปรียบเทียบ AI ระหว่างรอบ</div></div>`;
+      }
+
+      const recDiff = delta.recommendation_diff || { added: [], removed: [], retained: [] };
+      const weakDiff = delta.weakness_diff || { added: [], removed: [], retained: [] };
+
+      return `
+        <div class="delta-card">
+          <div><strong>ช่วงรอบ ${delta.from_round} -> ${delta.to_round}</strong></div>
+          <div class="small" style="margin-top:8px;">${escapeHtml(delta.narrative || "-")}</div>
+          <div class="ai-grid">
+            <div class="ai-card">
+              <div><strong>คำแนะนำใหม่</strong></div>
+              <ul>${safeArray(recDiff.added).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>-</li>"}</ul>
+            </div>
+            <div class="ai-card">
+              <div><strong>คำแนะนำที่หายไป</strong></div>
+              <ul>${safeArray(recDiff.removed).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>-</li>"}</ul>
+            </div>
+            <div class="ai-card">
+              <div><strong>จุดอ่อนที่ AI ไม่เน้นแล้ว</strong></div>
+              <ul>${safeArray(weakDiff.removed).map((item) => `<li>${escapeHtml(item)}</li>`).join("") || "<li>-</li>"}</ul>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderParticipantCard(participant) {
+      const rounds = safeArray(participant.rounds);
+      const comparison = participant.comparison || {};
+      const overall = comparison.overall_change;
+      const usernames = rounds.map((item) => item.username).join(" -> ");
+
+      return `
+        <div class="card">
+          <div class="participant-name">${escapeHtml(participant.participant_name)}</div>
+          <div class="participant-sub">
+            ${escapeHtml(participant.participant_id)} | ${escapeHtml(usernames)} | ครบรายงาน ${participant.completed_rounds}/${rounds.length} รอบ
+          </div>
+
+          <div class="round-grid">
+            ${rounds.map(renderRoundCard).join("")}
+          </div>
+
+          <div class="delta-grid">
+            <div class="delta-card">
+              <div><strong>ภาพรวมจากรอบแรกถึงรอบล่าสุด</strong></div>
+              ${overall ? renderMetricRows(overall.metric_changes) : `<div class="empty" style="margin-top:12px;">ยังไม่มี report ครบพอสำหรับเทียบ baseline กับรอบล่าสุด</div>`}
+            </div>
+            <div class="delta-card">
+              <div><strong>AI Recommendation Evolution</strong></div>
+              ${safeArray(comparison.transitions).length ? safeArray(comparison.transitions).map(renderAiDiff).join("") : `<div class="empty" style="margin-top:12px;">ยังไม่มีรอบถัดไปให้เปรียบเทียบคำแนะนำ</div>`}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function fetchRoundComparison() {
+      const res = await fetch(`${ORCH_BASE}/round_comparison_all`, { method: "GET", mode: "cors" });
+      if (!res.ok) throw new Error(`โหลด round comparison ไม่สำเร็จ (${res.status})`);
+      const ct = res.headers.get("content-type") || "";
+      if (!ct.includes("application/json")) {
+        throw new Error("ตอบกลับไม่ใช่ JSON จาก orchestrator");
+      }
+      const data = await res.json();
+      if (data.status !== "ok") {
+        throw new Error(data.message || "API ไม่สำเร็จ");
+      }
+      if (!Array.isArray(data.participants)) {
+        throw new Error("รูปแบบข้อมูลไม่ถูกต้อง (ไม่มี participants)");
+      }
+      return data;
+    }
+
+    function renderList(summary) {
+      LAST_SUMMARY = summary || LAST_SUMMARY || {};
+      const root = document.getElementById("root");
+      const query = (document.getElementById("searchBox").value || "").trim().toLowerCase();
+      const filtered = ALL_PARTICIPANTS.filter((item) => {
+        const rs = safeArray(item.rounds);
+        const haystack = [
+          item.participant_id,
+          item.participant_name,
+          ...rs.map((round) => round.username),
+        ].join(" ").toLowerCase();
+        return haystack.includes(query);
+      });
+
+      renderSummaryBar(LAST_SUMMARY, filtered);
+
+      if (!filtered.length) {
+        root.innerHTML = `<div class="empty">ไม่พบ participant ที่ตรงกับเงื่อนไข</div>`;
+        return;
+      }
+
+      try {
+        root.innerHTML = filtered.map(renderParticipantCard).join("");
+      } catch (e) {
+        console.error(e);
+        root.innerHTML = `<div class="empty">แสดงผลรายการไม่สำเร็จ: ${escapeHtml(e.message || e)}</div>`;
+      }
+    }
+
+    async function loadRoundComparison() {
+      const status = document.getElementById("statusText");
+      const root = document.getElementById("root");
+      if (!orchBaseOk()) {
+        root.innerHTML = `<div class="empty">ยังไม่ได้ตั้งค่า ORCH_PUBLIC_BASE สำหรับ CTFd (ต้องเป็น URL ของ orchestrator เช่น http://orch.example.com)</div>`;
+        status.innerText = "ตั้งค่าไม่ครบ";
+        return;
+      }
+      status.innerText = "กำลังโหลดผลเปรียบเทียบ 3 รอบ ...";
+      try {
+        const data = await fetchRoundComparison();
+        ALL_PARTICIPANTS = data.participants || [];
+        LAST_SUMMARY = data.summary || {};
+        if (!ALL_PARTICIPANTS.length) {
+          root.innerHTML = `<div class="empty">ไม่พบข้อมูล cohort (round_cohort) ใน orchestrator</div>`;
+          status.innerText = "ไม่มีข้อมูล";
+          return;
+        }
+        renderList(LAST_SUMMARY);
+        status.innerText = "โหลดผลเปรียบเทียบสำเร็จ";
+      } catch (e) {
+        console.error(e);
+        root.innerHTML = `
+          <div class="empty">โหลดผลเปรียบเทียบไม่สำเร็จ: ${escapeHtml(e.message || e)}</div>
+        `;
+        status.innerText = "เกิดข้อผิดพลาด";
+      }
+    }
+
+    document.getElementById("refreshBtn").onclick = loadRoundComparison;
+    document.getElementById("searchBox").addEventListener("input", () => renderList(LAST_SUMMARY));
+
+    loadRoundComparison();
+  </script>
+</body>
+</html>

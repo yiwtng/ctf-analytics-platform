@@ -1,0 +1,12 @@
+# ~/.bashrc for player
+
+clear
+cat /opt/internal/motd.txt
+echo
+echo "Type 'ls' to inspect the host."
+echo
+
+export PS1='player@pivot-lab:\w\$ '
+alias ll='ls -alF --color=auto'
+alias la='ls -A'
+alias l='ls -CF'

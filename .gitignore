@@ -1,0 +1,38 @@
+# === Secrets & Credentials ===
+.env
+.env.lan
+.env.tailscale
+*.key
+*.pem
+*.crt
+
+# === Python ===
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# === Runtime Data (generated at deploy time) ===
+platform/traefik/logs/
+platform/traefik/letsencrypt/
+
+# === CTFd runtime data ===
+platform/ctfd/data/
+platform/ctfd/uploads/
+
+# === Database backups ===
+database/backup/
+
+# === OS / Editor ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# === Claude Code ===
+.claude/

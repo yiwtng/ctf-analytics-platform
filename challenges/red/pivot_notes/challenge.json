@@ -1,0 +1,9 @@
+{
+  "id": "red_pivot_notes",
+  "name": "Red - Pivot Notes",
+  "type": "ssh",
+  "internal_port": 22,
+  "description": "Inspect the host and recover the target flag.",
+  "cpu_limit": "0.5",
+  "mem_limit": "512m"
+}

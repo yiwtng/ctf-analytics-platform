@@ -1,0 +1,10 @@
+====================================================
+  PIVOT-LAB INTERNAL ACCESS NODE
+====================================================
+
+Environment : restricted
+Role        : ops jump host
+Hostname    : pivot-lab
+Notice      : legacy notes may remain after migration
+
+Authorized access only.

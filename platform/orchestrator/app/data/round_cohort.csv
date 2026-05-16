@@ -1,0 +1,10 @@
+participant_id,participant_name,round_number,username,email,password,notes
+bank_s,Bank,1,bank.s01,bank.s01@ctf.local,BankRound#01,Round 1 baseline
+bank_s,Bank,2,bank.s02,bank.s02@ctf.local,BankRound#02,Round 2 after first personalized recommendations
+bank_s,Bank,3,bank.s03,bank.s03@ctf.local,BankRound#03,Round 3 after iterative improvement
+mint_s,Mint,1,mint.s01,mint.s01@ctf.local,MintRound#01,Round 1 baseline
+mint_s,Mint,2,mint.s02,mint.s02@ctf.local,MintRound#02,Round 2 after first personalized recommendations
+mint_s,Mint,3,mint.s03,mint.s03@ctf.local,MintRound#03,Round 3 after iterative improvement
+oak_s,Oak,1,oak.s01,oak.s01@ctf.local,OakRound#01,Round 1 baseline
+oak_s,Oak,2,oak.s02,oak.s02@ctf.local,OakRound#02,Round 2 after first personalized recommendations
+oak_s,Oak,3,oak.s03,oak.s03@ctf.local,OakRound#03,Round 3 after iterative improvement

@@ -1,0 +1,12 @@
+SOC INCIDENT SUMMARY
+
+Host: WS-23
+Severity: Medium
+Malware family: NotPetya-lookalike (false positive)
+Actual root cause: unauthorized scheduled task "svc_patch"
+Ticket number: IR-4471
+
+Question:
+What artifact most directly explains the incident?
+
+Flag format: flag{artifact_name}

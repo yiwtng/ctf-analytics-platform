@@ -1,0 +1,10 @@
+username,email,password
+bank.s01,bank.s01@ctf.local,BankRound#01
+bank.s02,bank.s02@ctf.local,BankRound#02
+bank.s03,bank.s03@ctf.local,BankRound#03
+mint.s01,mint.s01@ctf.local,MintRound#01
+mint.s02,mint.s02@ctf.local,MintRound#02
+mint.s03,mint.s03@ctf.local,MintRound#03
+oak.s01,oak.s01@ctf.local,OakRound#01
+oak.s02,oak.s02@ctf.local,OakRound#02
+oak.s03,oak.s03@ctf.local,OakRound#03

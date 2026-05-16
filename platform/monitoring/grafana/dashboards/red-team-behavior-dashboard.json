@@ -1,0 +1,424 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "id": 1,
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "analytics-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT ts, event_type, user_key, challenge_id, session_id, payload\nFROM events\nWHERE challenge_id LIKE 'red_%'\n\nAND (\n  '${user_key:raw}' = '$__all' OR user_key IN (${user_key:sqlstring})\n)\nAND (\n  '${challenge_id:raw}' = '$__all' OR challenge_id IN (${challenge_id:sqlstring})\n)\n\nORDER BY ts DESC\nLIMIT 100;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Recent Red Events",
+      "type": "table",
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 10
+      },
+      "id": 2,
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "analytics-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT event_type, COUNT(*) AS count\nFROM events\nWHERE challenge_id LIKE 'red_%'\n\nAND (\n  '${user_key:raw}' = '$__all' OR user_key IN (${user_key:sqlstring})\n)\nAND (\n  '${challenge_id:raw}' = '$__all' OR challenge_id IN (${challenge_id:sqlstring})\n)\n\nGROUP BY event_type\nORDER BY count DESC;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Event Volume by Type",
+      "type": "barchart",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 10
+      },
+      "id": 3,
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "analytics-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT challenge_id,\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_INTERACTION_ERROR') AS interaction_error,\n  COUNT(*) FILTER (WHERE event_type = 'START_INSTANCE_FAILED') AS start_failed,\n  COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_ERROR') AS submit_error\nFROM events\nWHERE challenge_id LIKE 'red_%'\n\nAND (\n  '${user_key:raw}' = '$__all' OR user_key IN (${user_key:sqlstring})\n)\nAND (\n  '${challenge_id:raw}' = '$__all' OR challenge_id IN (${challenge_id:sqlstring})\n)\n\nGROUP BY challenge_id\nORDER BY challenge_id;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Interaction Errors by Challenge",
+      "type": "barchart",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 18
+      },
+      "id": 4,
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "analytics-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT user_key, challenge_id,\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_OPEN_UI') AS open_ui,\n  COUNT(*) FILTER (WHERE event_type = 'START_INSTANCE_UI_CLICK') AS start_click,\n  COUNT(*) FILTER (WHERE event_type = 'INSTANCE_READY_UI') AS instance_ready,\n  COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_UI') AS submit_ui,\n  COUNT(*) FILTER (WHERE event_type = 'FLAG_SUBMIT_RESULT') AS submit_result,\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_GIVE_UP') AS give_up,\n  COUNT(*) FILTER (WHERE event_type = 'CHALLENGE_INTERACTION_ERROR') AS interaction_error\nFROM events\nWHERE challenge_id LIKE 'red_%'\n\nAND (\n  '${user_key:raw}' = '$__all' OR user_key IN (${user_key:sqlstring})\n)\nAND (\n  '${challenge_id:raw}' = '$__all' OR challenge_id IN (${challenge_id:sqlstring})\n)\n\nGROUP BY user_key, challenge_id\nORDER BY user_key, challenge_id;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "User x Challenge Summary",
+      "type": "table",
+      "options": {
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      }
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 28
+      },
+      "id": 5,
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "analytics-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT challenge_id,\n  COUNT(*) FILTER (\n    WHERE event_type = 'FLAG_SUBMIT_RESULT'\n      AND (payload::text ILIKE '%%wrong%%' OR payload::text ILIKE '%%incorrect%%')\n  ) AS wrong_submit,\n  COUNT(*) FILTER (\n    WHERE event_type = 'FLAG_SUBMIT_RESULT'\n      AND (payload::text ILIKE '%%submitted%%' OR payload::text ILIKE '%%correct%%')\n  ) AS success_submit\nFROM events\nWHERE challenge_id LIKE 'red_%'\n\nAND (\n  '${user_key:raw}' = '$__all' OR user_key IN (${user_key:sqlstring})\n)\nAND (\n  '${challenge_id:raw}' = '$__all' OR challenge_id IN (${challenge_id:sqlstring})\n)\n\nGROUP BY challenge_id\nORDER BY challenge_id;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Wrong vs Success Submission",
+      "type": "barchart",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 28
+      },
+      "id": 6,
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "analytics-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT challenge_id,\n  COUNT(*) FILTER (WHERE event_type = 'WEB_REQUEST') AS web_request,\n  COUNT(*) FILTER (WHERE event_type = 'TCP_INPUT') AS tcp_input,\n  COUNT(*) FILTER (WHERE event_type = 'SSH_COMMAND') AS ssh_command\nFROM events\nWHERE challenge_id LIKE 'red_%'\n\nAND (\n  '${user_key:raw}' = '$__all' OR user_key IN (${user_key:sqlstring})\n)\nAND (\n  '${challenge_id:raw}' = '$__all' OR challenge_id IN (${challenge_id:sqlstring})\n)\n\nGROUP BY challenge_id\nORDER BY challenge_id;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Web vs NC vs SSH Activity",
+      "type": "barchart",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 0,
+        "y": 36
+      },
+      "id": 7,
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "analytics-postgres"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "\nSELECT date_trunc('minute', ts) AS \"time\",\n  event_type AS metric,\n  COUNT(*) AS value\nFROM events\nWHERE challenge_id LIKE 'red_%'\n\nAND (\n  '${user_key:raw}' = '$__all' OR user_key IN (${user_key:sqlstring})\n)\nAND (\n  '${challenge_id:raw}' = '$__all' OR challenge_id IN (${challenge_id:sqlstring})\n)\n\nGROUP BY 1, 2\nORDER BY 1, 2;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Timeline of Red Events",
+      "type": "timeseries",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "fillOpacity": 9,
+            "showPoints": "auto",
+            "pointSize": 3,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "axisPlacement": "auto",
+            "axisColorMode": "text",
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "color": {
+            "mode": "palette-classic"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "datasource": {
+        "type": "postgres",
+        "uid": "analytics-postgres"
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 12,
+        "x": 12,
+        "y": 36
+      },
+      "id": 8,
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "analytics-postgres"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "\nSELECT user_key,\n  COUNT(*) FILTER (WHERE event_type = 'TCP_BAD_AUTH') AS bad_auth,\n  COUNT(*) FILTER (WHERE event_type = 'TCP_MALFORMED') AS malformed,\n  COUNT(*) FILTER (WHERE event_type = 'TCP_HELLO_OK') AS hello_ok\nFROM events\nWHERE challenge_id = 'red_protocol_probe'\nAND (\n  '${user_key:raw}' = '$__all' OR user_key IN (${user_key:sqlstring})\n)\nGROUP BY user_key\nORDER BY user_key;\n",
+          "refId": "A"
+        }
+      ],
+      "title": "Protocol-specific Mistakes",
+      "type": "barchart",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": []
+      },
+      "options": {
+        "orientation": "auto",
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      }
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": [
+    "red-team",
+    "behavior",
+    "ctf",
+    "research"
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "user_key",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "analytics-postgres"
+        },
+        "definition": "SELECT DISTINCT user_key FROM events WHERE challenge_id LIKE 'red_%' ORDER BY 1",
+        "query": "SELECT DISTINCT user_key FROM events WHERE challenge_id LIKE 'red_%' ORDER BY 1",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "challenge_id",
+        "type": "query",
+        "datasource": {
+          "type": "postgres",
+          "uid": "analytics-postgres"
+        },
+        "definition": "SELECT DISTINCT challenge_id FROM events WHERE challenge_id LIKE 'red_%' ORDER BY 1",
+        "query": "SELECT DISTINCT challenge_id FROM events WHERE challenge_id LIKE 'red_%' ORDER BY 1",
+        "refresh": 2,
+        "includeAll": true,
+        "multi": true,
+        "current": {
+          "selected": true,
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "timezone": "",
+  "title": "Red Team Behavior Analytics",
+  "uid": "red-team-behavior",
+  "version": 1
+}

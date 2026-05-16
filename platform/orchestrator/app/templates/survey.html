@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>CTF Feedback Survey</title>
+<style>
+body {
+    font-family: Arial;
+    background: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+.container {
+    background: #1e293b;
+    padding: 30px;
+    border-radius: 12px;
+    width: 600px;
+}
+h1 {
+    text-align: center;
+}
+label {
+    margin-top: 15px;
+    display: block;
+}
+select, input, textarea {
+    width: 100%;
+    padding: 10px;
+    margin-top: 5px;
+    border-radius: 6px;
+    border: none;
+}
+button {
+    margin-top: 20px;
+    width: 100%;
+    padding: 12px;
+    background: #22c55e;
+    color: black;
+    font-weight: bold;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+button:hover {
+    background: #16a34a;
+}
+.success {
+    margin-top: 15px;
+    color: #4ade80;
+    text-align: center;
+}
+</style>
+</head>
+
+<body>
+<div class="container">
+<h1>📊 แบบประเมินระบบ CTF</h1>
+
+<form id="surveyForm">
+
+<label>User</label>
+<input type="text" id="user_key" placeholder="เช่น u01" required>
+
+<label>ความง่ายในการใช้งาน (1-5)</label>
+<select id="usability_score" required>
+<option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+</select>
+
+<label>คุณภาพโจทย์ (1-5)</label>
+<select id="challenge_quality_score" required>
+<option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+</select>
+
+<label>คุณภาพคำแนะนำหลังแข่ง (1-5)</label>
+<select id="recommendation_quality_score" required>
+<option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+</select>
+
+<label>ช่วยเพิ่มความมั่นใจ (1-5)</label>
+<select id="confidence_improvement_score" required>
+<option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option>
+</select>
+
+<label>ส่วนที่ชอบ</label>
+<textarea id="favorite_part"></textarea>
+
+<label>สิ่งที่ควรปรับปรุง</label>
+<textarea id="improvement_point"></textarea>
+
+<label>ความคิดเห็นเพิ่มเติม</label>
+<textarea id="comments"></textarea>
+
+<button type="submit">Submit Feedback</button>
+
+</form>
+
+<div class="success" id="msg"></div>
+
+</div>
+
+<script>
+document.getElementById("surveyForm").addEventListener("submit", async function(e) {
+    e.preventDefault();
+
+    const data = {
+        user_key: document.getElementById("user_key").value,
+        usability_score: parseInt(document.getElementById("usability_score").value),
+        challenge_quality_score: parseInt(document.getElementById("challenge_quality_score").value),
+        recommendation_quality_score: parseInt(document.getElementById("recommendation_quality_score").value),
+        confidence_improvement_score: parseInt(document.getElementById("confidence_improvement_score").value),
+        favorite_part: document.getElementById("favorite_part").value,
+        improvement_point: document.getElementById("improvement_point").value,
+        comments: document.getElementById("comments").value
+    };
+
+    const res = await fetch("/participant_feedback", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+        document.getElementById("msg").innerText = "✅ ส่งข้อมูลเรียบร้อยแล้ว";
+        document.getElementById("surveyForm").reset();
+    } else {
+        document.getElementById("msg").innerText = "❌ เกิดข้อผิดพลาด";
+    }
+});
+</script>
+
+</body>
+</html>

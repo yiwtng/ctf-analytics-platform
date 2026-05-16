@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>CTF Player Report</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    background: #0f172a;
+    color: #e2e8f0;
+    margin: 0;
+    padding: 30px;
+}
+.container {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+h1, h2, h3 {
+    margin-top: 0;
+}
+.card {
+    background: #1e293b;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+}
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+.badge {
+    display: inline-block;
+    background: #334155;
+    color: #f8fafc;
+    padding: 6px 10px;
+    border-radius: 999px;
+    margin: 4px 6px 0 0;
+    font-size: 14px;
+}
+ul {
+    margin-top: 10px;
+    padding-left: 20px;
+}
+li {
+    margin-bottom: 8px;
+}
+.small {
+    color: #94a3b8;
+    font-size: 14px;
+}
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+th, td {
+    border-bottom: 1px solid #334155;
+    padding: 10px;
+    text-align: left;
+    vertical-align: top;
+}
+th {
+    color: #cbd5e1;
+}
+.score {
+    font-size: 24px;
+    font-weight: bold;
+}
+.section-title {
+    margin-bottom: 10px;
+    color: #f8fafc;
+}
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background: #0b1220;
+    border-radius: 10px;
+    padding: 12px;
+    color: #cbd5e1;
+    overflow-x: auto;
+}
+@media (max-width: 800px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+    <div class="card">
+        <h1>📘 รายงานผลหลังการแข่งขัน</h1>
+        <p class="small">ผู้เล่น: <strong>{{ user_key }}</strong></p>
+        {% if ai_result and ai_result.get("status") == "ok" %}
+            <p>{{ ai_result["ai_report"]["summary"] }}</p>
+            <p class="small">
+            AI Model: {{ ai_result["model"] }} |
+            Confidence: {{ ai_result["ai_report"]["confidence"] }}
+            {% if ai_result.get("ts") %}
+            | Generated at: {{ ai_result["ts"] }}
+            {% endif %}
+            </p>
+        {% else %}
+            <p>ไม่สามารถสร้างรายงาน AI ได้ในขณะนี้</p>
+        {% endif %}
+    </div>
+
+    {% if ai_result and ai_result.get("status") == "ok" %}
+    <div class="grid">
+        <div class="card">
+            <h2 class="section-title">🧠 โปรไฟล์ผู้เล่น</h2>
+            {% for item in ai_result["ai_report"]["profile"] %}
+                <span class="badge">{{ item }}</span>
+            {% endfor %}
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">🎯 คำแนะนำหลัก</h2>
+            <ul>
+                {% for item in ai_result["ai_report"]["recommendations"] %}
+                    <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <h2 class="section-title">✅ จุดแข็ง</h2>
+            <ul>
+                {% for item in ai_result["ai_report"]["strengths"] %}
+                    <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <div class="card">
+            <h2 class="section-title">⚠️ จุดที่ควรพัฒนา</h2>
+            <ul>
+                {% for item in ai_result["ai_report"]["weaknesses"] %}
+                    <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="section-title">📊 สรุปพฤติกรรมรายโจทย์</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Challenge</th>
+                    <th>Observations</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ch in ai_result["raw_summary"]["challenge_summaries"] %}
+                <tr>
+                    <td><strong>{{ ch["challenge_id"] }}</strong></td>
+                    <td>
+                        {% for k, v in ch["observations"].items() %}
+                            <div><strong>{{ k }}</strong>: {{ v }}</div>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="card">
+        <h2 class="section-title">📝 แบบประเมินจากผู้ใช้</h2>
+        {% if survey %}
+            <div class="grid">
+                <div>
+                    <p><strong>Usability</strong>: <span class="score">{{ survey["usability_score"] }}/5</span></p>
+                    <p><strong>Challenge Quality</strong>: <span class="score">{{ survey["challenge_quality_score"] }}/5</span></p>
+                </div>
+                <div>
+                    <p><strong>Recommendation Quality</strong>: <span class="score">{{ survey["recommendation_quality_score"] }}/5</span></p>
+                    <p><strong>Confidence Improvement</strong>: <span class="score">{{ survey["confidence_improvement_score"] }}/5</span></p>
+                </div>
+            </div>
+
+            <h3>ส่วนที่ชอบ</h3>
+            <pre>{{ survey["favorite_part"] or "-" }}</pre>
+
+            <h3>สิ่งที่ควรปรับปรุง</h3>
+            <pre>{{ survey["improvement_point"] or "-" }}</pre>
+
+            <h3>ความคิดเห็นเพิ่มเติม</h3>
+            <pre>{{ survey["comments"] or "-" }}</pre>
+
+            <p class="small">บันทึกล่าสุด: {{ survey["ts"] }}</p>
+        {% else %}
+            <p>ยังไม่มีข้อมูลแบบประเมินของผู้ใช้นี้</p>
+        {% endif %}
+    </div>
+
+</div>
+</body>
+</html>

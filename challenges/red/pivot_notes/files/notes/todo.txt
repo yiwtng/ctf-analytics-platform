@@ -1,0 +1,4 @@
+[ops todo]
+- clean old notes in home folder
+- verify session sync status
+- remove stale backup references after archive migration

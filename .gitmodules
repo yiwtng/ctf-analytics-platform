@@ -1,0 +1,3 @@
+[submodule "apt42_ctfd_themes"]
+	path = apt42_ctfd_themes
+	url = https://github.com/apt42/ctfd-themes.git

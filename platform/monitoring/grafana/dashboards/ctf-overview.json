@@ -1,0 +1,190 @@
+{
+  "annotations": {
+    "list": []
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Total Events",
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(*) AS total_events FROM events;",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Total Sessions",
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(DISTINCT session_id) AS total_sessions FROM events WHERE session_id IS NOT NULL;",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Total Users",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 0 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT COUNT(DISTINCT user_key) AS total_users FROM events WHERE user_key IS NOT NULL;",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "values": false,
+          "calcs": ["lastNotNull"],
+          "fields": ""
+        },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "value"
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Event Distribution",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT event_type, COUNT(*) AS count FROM events GROUP BY event_type ORDER BY count DESC;",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xField": "event_type",
+        "showValue": "auto"
+      }
+    },
+    {
+      "type": "barchart",
+      "title": "Challenge Usage",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 4 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT challenge_id, COUNT(*) AS count FROM events WHERE challenge_id IS NOT NULL GROUP BY challenge_id ORDER BY count DESC;",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xField": "challenge_id",
+        "showValue": "auto"
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Event Timeline",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "time_series",
+          "rawSql": "SELECT date_trunc('minute', ts) AS time, COUNT(*) AS event_count FROM events GROUP BY 1 ORDER BY 1;",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "Session Summary",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 12 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT session_id, MAX(user_key) AS user_key, MAX(challenge_id) AS challenge_id, MIN(ts) AS session_start, MAX(ts) AS session_end, EXTRACT(EPOCH FROM (MAX(ts) - MIN(ts))) AS duration_seconds, COUNT(*) AS total_events FROM events WHERE session_id IS NOT NULL GROUP BY session_id ORDER BY session_start DESC;",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Feedback Type Distribution",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT feedback_type, COUNT(*) AS count FROM feedback_reports GROUP BY feedback_type ORDER BY count DESC;",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "orientation": "vertical",
+        "xField": "feedback_type",
+        "showValue": "auto"
+      }
+    },
+    {
+      "type": "table",
+      "title": "Latest Feedback",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+      "datasource": { "type": "postgres", "uid": "-- Grafana --" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT ts, user_key, challenge_id, session_id, feedback_type, severity, feedback_text FROM feedback_reports ORDER BY ts DESC LIMIT 50;",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 39,
+  "style": "dark",
+  "tags": ["ctf", "analytics", "feedback"],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "timepicker": {},
+  "timezone": "",
+  "title": "CTF Behavioral Analytics Overview",
+  "version": 1,
+  "weekStart": ""
+}

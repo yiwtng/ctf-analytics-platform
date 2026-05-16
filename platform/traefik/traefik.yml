@@ -1,0 +1,37 @@
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+  websecure:
+    address: ":443"
+  traefik:
+    address: ":8080"
+  nc:
+    address: ":31000"
+  ssh:
+    address: ":32222"
+
+providers:
+  docker:
+    exposedByDefault: false
+  file:
+    directory: "/dynamic"
+    watch: true
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: admin@cybercontest.com
+      storage: /letsencrypt/acme.json
+      httpChallenge:
+        entryPoint: web
+
+accessLog:
+  filePath: "/logs/access.log"
+  format: json
+
+log:
+  level: INFO

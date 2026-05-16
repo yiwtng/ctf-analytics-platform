@@ -1,0 +1,8 @@
+MINI CASE
+
+Victim hostname: UAV-GCS-02
+Observed tool in script: rclone
+Remote destination: s3://ghost-backup-bucket
+
+Build final flag as:
+flag{hostname|tool|destination}

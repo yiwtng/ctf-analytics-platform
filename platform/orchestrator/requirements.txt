@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+docker
+psycopg2-binary
+sqlalchemy
+pydantic
+python-dotenv
+requests
+jinja2
+google-genai
+openai>=1.40.0

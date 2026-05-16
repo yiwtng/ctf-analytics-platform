@@ -1,0 +1,38 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite it as below."
+type: software
+title: "CTF Analytics Platform: Automated System for Analyzing Players' Problem-Solving Skills"
+abstract: >
+  An automated system for analyzing players' problem-solving skills and providing
+  personalized feedback for Capture the Flag (CTF) competitions. The system extends
+  CTFd with an orchestrator service and analytics database to capture event-level
+  behavior from both interactive and analysis-based challenges, deriving seven
+  skill dimensions via rule-based analysis and generating AI-powered personalized reports.
+authors:
+  - family-names: Wutthiamornthada
+    given-names: Thanagrit
+    affiliation: >
+      Department of Digital Network and Information Security Management,
+      King Mongkut's University of Technology North Bangkok (KMUTNB)
+    email: thanagrit.yiw@gmail.com
+repository-code: "https://github.com/thanagrit-wutthiamornthada/ctf-analytics-platform"
+license: MIT
+version: "1.0.0"
+date-released: "2025-04-18"
+keywords:
+  - capture the flag
+  - cybersecurity education
+  - learning analytics
+  - personalized feedback
+  - behavior analysis
+  - CTFd
+preferred-citation:
+  type: article
+  title: "Automated System for Analyzing Players' Problem-Solving Skills and Providing Feedback for CTF Competitions"
+  authors:
+    - family-names: Wutthiamornthada
+      given-names: Thanagrit
+      affiliation: King Mongkut's University of Technology North Bangkok
+  journal: "IEEE Access"
+  year: 2025
+  notes: "Under review"
