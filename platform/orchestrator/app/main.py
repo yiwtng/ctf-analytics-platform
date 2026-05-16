@@ -1,10 +1,23 @@
+import logging
 import os
+import time
 
 from fastapi import FastAPI, Query, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+audit_log = logging.getLogger("audit")
+logging.basicConfig(level=logging.INFO)
+_audit_handler = logging.FileHandler("/tmp/audit.log")
+_audit_handler.setFormatter(logging.Formatter("%(asctime)s %(message)s"))
+audit_log.addHandler(_audit_handler)
+
+limiter = Limiter(key_func=get_remote_address)
 
 from app.experiment import is_treatment, assignment_summary
 
@@ -34,6 +47,8 @@ from app.report_service import (
 # INIT
 # =========================
 app = FastAPI(title="CTF Orchestrator")
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 _cors_origins_env = os.getenv("ORCH_CORS_ORIGINS", "").strip()
 if _cors_origins_env:
@@ -202,6 +217,7 @@ def analyze_user_ai_save(user: str = Query(...)):
 # HTML PAGE (USER REPORT)
 # =========================
 @app.get("/report", response_class=HTMLResponse)
+@limiter.limit("30/minute")
 def report_page(request: Request, user: str = Query(...), user_id: int | None = Query(None)):
     """
     Personal report page. AI feedback section is only shown to TREATMENT
@@ -228,6 +244,7 @@ def report_page(request: Request, user: str = Query(...), user_id: int | None = 
     else:
         ai_result = None  # control group: no AI feedback
 
+    audit_log.info("REPORT_VIEW user_key=%s user_id=%s ip=%s", user, user_id, request.client.host if request.client else "unknown")
     return templates.TemplateResponse(
         request=request,
         name="report.html",
@@ -244,8 +261,10 @@ def report_page(request: Request, user: str = Query(...), user_id: int | None = 
 # EXPERIMENT (ADMIN)
 # =========================
 @app.get("/admin-experiment-summary")
-def experiment_summary():
+@limiter.limit("20/minute")
+def experiment_summary(request: Request):
     """Return current control/treatment allocation balance."""
+    audit_log.info("ADMIN_EXPERIMENT_SUMMARY ip=%s", request.client.host if request.client else "unknown")
     try:
         return {"status": "ok", "summary": assignment_summary()}
     except Exception as exc:
@@ -256,12 +275,16 @@ def experiment_summary():
 # REPORT API
 # =========================
 @app.post("/generate_report/{user_key}")
-def generate_report(user_key: str):
+@limiter.limit("10/minute")
+def generate_report(request: Request, user_key: str):
+    audit_log.info("GENERATE_REPORT user_key=%s ip=%s", user_key, request.client.host if request.client else "unknown")
     return generate_user_report(user_key)
 
 
 @app.post("/generate_report_all")
-def generate_report_all_api():
+@limiter.limit("5/minute")
+def generate_report_all_api(request: Request):
+    audit_log.info("GENERATE_REPORT_ALL ip=%s", request.client.host if request.client else "unknown")
     return generate_all_reports()
 
 
