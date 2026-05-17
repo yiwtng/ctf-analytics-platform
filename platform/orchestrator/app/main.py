@@ -20,6 +20,18 @@ audit_log.addHandler(_audit_handler)
 limiter = Limiter(key_func=get_remote_address)
 
 from app.experiment import is_treatment, assignment_summary
+from app.enrollment_service import (
+    enroll_participant,
+    update_enrollment_status,
+    record_withdrawal,
+    get_study_dashboard,
+    EnrollmentError,
+    EnrollmentStatus,
+)
+from app.assessment_service import (
+    record_assessment_score,
+    AssessmentError,
+)
 
 from app.session_manager import start_session, stop_session
 from app.feedback.rules import generate_feedback_for_session, generate_feedback_for_user
@@ -269,6 +281,106 @@ def experiment_summary(request: Request):
         return {"status": "ok", "summary": assignment_summary()}
     except Exception as exc:
         return {"status": "error", "message": str(exc)}
+
+
+# =========================
+# ENROLLMENT (ADMIN)
+# =========================
+class EnrollmentRequest(BaseModel):
+    ctfd_user_id: int
+    participant_code: str
+    source_group: str
+    age_range: str
+    education_level: str
+    experience_level: str
+    consent_recorded_at: str  # ISO 8601
+    irb_study_id: str
+
+
+class StatusUpdateRequest(BaseModel):
+    status: str
+    detail: dict | None = None
+
+
+class WithdrawalRequest(BaseModel):
+    reason: str | None = None
+    delete_data: bool = False
+
+
+class AssessmentRequest(BaseModel):
+    assessment_type: str  # "pretest" | "posttest"
+    score: float
+    max_score: float
+    administered_at: str  # ISO 8601
+
+
+@app.post("/admin/enrollment/register")
+@limiter.limit("20/minute")
+def admin_enrollment_register(request: Request, body: EnrollmentRequest):
+    audit_log.info("ENROLL participant=%s ctfd=%s ip=%s",
+                   body.participant_code, body.ctfd_user_id,
+                   request.client.host if request.client else "unknown")
+    from datetime import datetime
+    try:
+        result = enroll_participant(
+            ctfd_user_id=body.ctfd_user_id,
+            participant_code=body.participant_code,
+            source_group=body.source_group,
+            age_range=body.age_range,
+            education_level=body.education_level,
+            experience_level=body.experience_level,
+            consent_recorded_at=datetime.fromisoformat(body.consent_recorded_at),
+            irb_study_id=body.irb_study_id,
+        )
+        return {"status": "ok", "enrollment": result}
+    except EnrollmentError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+
+@app.post("/admin/enrollment/status/{participant_code}")
+@limiter.limit("30/minute")
+def admin_enrollment_status(request: Request, participant_code: str, body: StatusUpdateRequest):
+    audit_log.info("STATUS_UPDATE participant=%s new=%s", participant_code, body.status)
+    try:
+        update_enrollment_status(participant_code, body.status, body.detail)
+        return {"status": "ok", "participant_code": participant_code, "new_status": body.status}
+    except EnrollmentError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@app.post("/admin/enrollment/withdraw/{participant_code}")
+@limiter.limit("20/minute")
+def admin_enrollment_withdraw(request: Request, participant_code: str, body: WithdrawalRequest):
+    audit_log.info("WITHDRAW participant=%s erase=%s", participant_code, body.delete_data)
+    try:
+        record_withdrawal(participant_code, body.reason, body.delete_data)
+        return {"status": "ok", "participant_code": participant_code, "withdrawn": True}
+    except EnrollmentError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+
+
+@app.get("/admin/enrollment/dashboard")
+@limiter.limit("60/minute")
+def admin_enrollment_dashboard(request: Request):
+    return {"status": "ok", "dashboard": get_study_dashboard()}
+
+
+@app.post("/admin/enrollment/assessment/{participant_code}")
+@limiter.limit("30/minute")
+def admin_enrollment_assessment(request: Request, participant_code: str, body: AssessmentRequest):
+    audit_log.info("ASSESSMENT participant=%s type=%s", participant_code, body.assessment_type)
+    from datetime import datetime
+    try:
+        result = record_assessment_score(
+            participant_code=participant_code,
+            assessment_type=body.assessment_type,
+            score=body.score,
+            max_score=body.max_score,
+            administered_at=datetime.fromisoformat(body.administered_at),
+        )
+        return {"status": "ok", "assessment": result}
+    except AssessmentError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 # =========================

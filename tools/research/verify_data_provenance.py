@@ -57,7 +57,6 @@ def _is_simulation(user_key: str) -> bool:
 def scan() -> dict:
     with _get_conn() as conn:
         with conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor) as cur:
-            # All distinct user_keys with events
             cur.execute("""
                 SELECT user_key, COUNT(*) AS event_count, MIN(ts) AS first_event
                 FROM events
@@ -67,22 +66,33 @@ def scan() -> dict:
             """)
             event_users = {r["user_key"]: dict(r) for r in cur.fetchall()}
 
-            # Users enrolled via experiment.py
             cur.execute("""
                 SELECT user_id, condition, assigned_at
                 FROM experiment_assignment
             """)
             assigned = {r["user_id"]: dict(r) for r in cur.fetchall()}
 
-            # CTFd user_id ↔ user_key mapping (via skill reports)
-            cur.execute("""
-                SELECT DISTINCT user_key FROM user_skill_reports
-            """)
+            # Enrollment is the authoritative IRB-tracked roster
+            enrolled_codes = set()
+            enrolled_ctfd_ids = set()
+            try:
+                cur.execute(
+                    "SELECT participant_code, ctfd_user_id FROM participant_enrollment "
+                    "WHERE status != 'withdrawn'"
+                )
+                for r in cur.fetchall():
+                    enrolled_codes.add(r["participant_code"])
+                    enrolled_ctfd_ids.add(r["ctfd_user_id"])
+            except psycopg2.Error:
+                pass  # migration 009 not yet applied
+
+            cur.execute("SELECT DISTINCT user_key FROM user_skill_reports")
             reported_users = {r["user_key"] for r in cur.fetchall()}
 
     result = {
         "total_event_users": len(event_users),
         "assigned_via_experiment": len(assigned),
+        "enrolled_irb_tracked": len(enrolled_codes),
         "simulation": [],
         "unknown": [],
         "clean": [],
@@ -98,7 +108,14 @@ def scan() -> dict:
                 "first_event": str(info["first_event"]),
                 "reason": "matches simulation pattern (bank.s*/mint.s*/oak.s*)",
             })
-        elif user_key not in reported_users and len(assigned) > 0:
+        elif enrolled_codes and user_key not in enrolled_codes:
+            result["unknown"].append({
+                "user_key": user_key,
+                "event_count": info["event_count"],
+                "first_event": str(info["first_event"]),
+                "reason": "events exist but no participant_enrollment record (IRB-tracked roster)",
+            })
+        elif not enrolled_codes and user_key not in reported_users and len(assigned) > 0:
             result["unknown"].append({
                 "user_key": user_key,
                 "event_count": info["event_count"],
@@ -121,6 +138,7 @@ def report(result: dict, allow_unknown: bool = False, as_json: bool = False) -> 
     print("DATA PROVENANCE VERIFICATION REPORT")
     print("=" * 60)
     print(f"Total users with events : {result['total_event_users']}")
+    print(f"Enrolled (IRB-tracked)  : {result.get('enrolled_irb_tracked', 0)}")
     print(f"Assigned via experiment : {result['assigned_via_experiment']}")
     print(f"Simulation users found  : {len(result['simulation'])}")
     print(f"Unknown-origin users    : {len(result['unknown'])}")
