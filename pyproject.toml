@@ -3,7 +3,15 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --strict-markers"
+markers = [
+    "smoke: service availability checks (fast, requires live services)",
+    "unit: pure logic, no external dependencies",
+    "integration: requires DB / docker services",
+    "api: hits REST endpoints",
+    "e2e: full user workflow",
+]
+timeout = 60
 
 [tool.coverage.run]
 source = ["platform/orchestrator/app", "tools"]

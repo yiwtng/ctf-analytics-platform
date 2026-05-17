@@ -1,0 +1,9 @@
+# Development and test dependencies (in addition to requirements-pinned.txt)
+
+pytest>=8.0
+pytest-cov>=5.0
+pytest-asyncio>=0.23
+pytest-timeout>=2.3
+httpx>=0.27
+respx>=0.21        # mock httpx/requests calls (Gemini)
+freezegun>=1.4     # deterministic time
