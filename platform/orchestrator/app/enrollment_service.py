@@ -123,6 +123,13 @@ def enroll_participant(
             _ = cur.fetchone()
 
     assignment = assign_participant(ctfd_user_id)
+    # Handle both dataclass (live DB) and dict (test fixtures)
+    if hasattr(assignment, "condition"):
+        condition = assignment.condition.value if hasattr(assignment.condition, "value") else str(assignment.condition)
+        block_id = assignment.block_id
+    else:
+        condition = assignment["condition"]
+        block_id = assignment["block_id"]
 
     with _get_conn() as conn:
         with conn.cursor() as cur:
@@ -135,15 +142,15 @@ def enroll_participant(
         "participant_code": participant_code,
         "ctfd_user_id": ctfd_user_id,
         "source_group": source_group,
-        "condition": assignment["condition"],
+        "condition": condition,
         "irb_study_id": irb_study_id,
     })
 
     return {
         "participant_code": participant_code,
         "ctfd_user_id": ctfd_user_id,
-        "condition": assignment["condition"],
-        "block_id": assignment["block_id"],
+        "condition": condition,
+        "block_id": block_id,
         "status": EnrollmentStatus.ASSIGNED.value,
     }
 
