@@ -1,4 +1,7 @@
 """
+
+pytestmark = pytest.mark.unit
+
 Tests for AI feedback quality assessment (G3).
 """
 
@@ -8,7 +11,7 @@ from unittest.mock import patch, MagicMock
 import pytest
 import sys, os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "platform", "orchestrator"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "platform", "orchestrator"))
 
 from app.validation_service import FeedbackRating, _cohens_kappa
 

@@ -1,4 +1,7 @@
 """
+
+pytestmark = pytest.mark.unit
+
 Tests for the psychometric validation service.
 
 Uses synthetic data to verify ICC, Cronbach's alpha, and convergent
@@ -12,7 +15,7 @@ import pytest
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "platform", "orchestrator"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "platform", "orchestrator"))
 
 from app.validation_service import (
     ExpertRating,

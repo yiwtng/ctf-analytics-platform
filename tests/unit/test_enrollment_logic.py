@@ -1,5 +1,8 @@
 """Tests for enrollment_service.py and assessment_service.py.
 
+
+pytestmark = pytest.mark.unit
+
 Uses an in-memory mock DB layer (psycopg2 stubs) so tests run without a live
 database.
 """

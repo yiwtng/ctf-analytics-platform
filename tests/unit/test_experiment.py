@@ -1,4 +1,7 @@
 """
+
+pytestmark = pytest.mark.unit
+
 Tests for the block-randomization experiment assignment module.
 
 All tests use an in-memory mock of the DB layer so no live database
@@ -88,7 +91,7 @@ def patch_db(reset_store):
 
 import sys
 import os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "platform", "orchestrator"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "platform", "orchestrator"))
 
 from app.experiment import (
     Condition,

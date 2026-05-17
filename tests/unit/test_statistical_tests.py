@@ -1,4 +1,7 @@
 """
+
+pytestmark = pytest.mark.unit
+
 Tests for the inferential statistics pipeline (G6).
 
 All DB calls are mocked; scipy/numpy are used directly for reference values.
@@ -14,8 +17,8 @@ import sys, os
 
 import pytest
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "platform", "orchestrator"))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools", "analysis"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "platform", "orchestrator"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "tools", "analysis"))
 
 import statistical_tests as st
 
