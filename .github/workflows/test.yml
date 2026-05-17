@@ -1,0 +1,33 @@
+name: test-suite
+
+on: [push, pull_request]
+
+jobs:
+  unit:
+    name: unit + skill scoring (no DB required)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install runtime + test dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements-pinned.txt
+          pip install -r requirements-dev.txt
+      - name: Run unit tests with coverage
+        run: |
+          pytest tests/unit -v \
+            --cov=platform/orchestrator/app \
+            --cov=tools \
+            --cov-report=xml \
+            --cov-report=term \
+            -m "unit"
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore

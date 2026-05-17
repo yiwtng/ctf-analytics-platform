@@ -133,6 +133,24 @@ This study operates under IRB approval from the KMUTNB Human Research Ethics Com
 
 ---
 
+## Testing
+
+The platform is validated by a 5-level test suite (**132 tests** total):
+
+| Level | Count | Marker | Run |
+|-------|-------|--------|-----|
+| Smoke (service availability) | 6 | `smoke` | `pytest -m smoke` |
+| Unit (analytics correctness) | 84 | `unit` | `pytest -m unit` |
+| Integration (DB + LLM + PII) | 16 | `integration` | `pytest -m integration` |
+| API (endpoint reliability) | 18 | `api` | `pytest -m api` |
+| End-to-end (participant workflow) | 8 | `e2e` | `pytest -m e2e` |
+
+The unit suite runs in CI on every push. Integration/API/E2E require a live docker compose stack. The PII leak test (`test_llm_pipeline.py::TestPromptPII`) serves as PDPA compliance evidence: it verifies that the LLM payload contains only pseudonymous codes and aggregated statistics — never email, IP, phone, national ID, or real names.
+
+See [docs/testing.md](docs/testing.md) for the complete testing strategy.
+
+---
+
 ## Repository Structure
 
 ```
