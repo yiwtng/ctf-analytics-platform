@@ -2,6 +2,7 @@
 .env
 .env.lan
 .env.tailscale
+.env.prod
 *.key
 *.pem
 *.crt
@@ -25,6 +26,7 @@ platform/ctfd/uploads/
 
 # === Database backups ===
 database/backup/
+deploy/backups/
 
 # === OS / Editor ===
 .DS_Store

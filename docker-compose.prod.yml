@@ -1,0 +1,144 @@
+# =============================================================================
+# docker-compose.prod.yml — Production override for Parallels Ubuntu + Tailscale
+# =============================================================================
+# Usage (never run standalone):
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+#     --env-file .env.prod up -d --build
+#
+# Rules:
+#   - Containers: suffix _prod  (prevents name collisions with dev stack)
+#   - Volumes:    prefix ctf_prod_  (data isolated from dev)
+#   - Networks:   prefix ctf_prod_  (layer-2 isolation from dev)
+#   - analytics_db port bound to 127.0.0.1 only (not exposed via Tailscale)
+#   - restart: unless-stopped on every service (survives VM reboot)
+#   - Healthchecks on every service (30s interval, 3 retries)
+# =============================================================================
+
+services:
+
+  # ---------------------------------------------------------------------------
+  traefik:
+  # ---------------------------------------------------------------------------
+    container_name: traefik_prod
+    # Bind only what is needed; Tailscale proxies external traffic to port 80.
+    # Port 8080 (dashboard) remains accessible on the VM's Tailscale IP for admins.
+    ports:
+      - "0.0.0.0:80:80"
+      - "0.0.0.0:443:443"
+      - "0.0.0.0:${PUBLIC_NC_PORT:-31000}:31000"
+      - "0.0.0.0:${PUBLIC_SSH_PORT:-32222}:32222"
+      - "0.0.0.0:8080:8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "--tries=1", "http://localhost:8080/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  ctfd:
+  # ---------------------------------------------------------------------------
+    container_name: ctfd_prod
+    volumes:
+      - ctf_prod_ctfd_uploads:/var/uploads
+      - ctf_prod_ctfd_data:/opt/CTFd/CTFd/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "--tries=1", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  ctfd_db:
+  # ---------------------------------------------------------------------------
+    container_name: ctfd_db_prod
+    volumes:
+      - ctf_prod_ctfd_db:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${CTFD_DB_USER} -d ${CTFD_DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  ctfd_cache:
+  # ---------------------------------------------------------------------------
+    container_name: ctfd_cache_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  analytics_db:
+  # ---------------------------------------------------------------------------
+    container_name: analytics_db_prod
+    # Bind the dev-convenience port to loopback only — not exposed via Tailscale.
+    # Use `docker exec analytics_db_prod psql ...` for direct access instead.
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - ctf_prod_analytics_db:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ANALYTICS_DB_USER} -d ${ANALYTICS_DB_NAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  orchestrator:
+  # ---------------------------------------------------------------------------
+    container_name: orchestrator_prod
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "--tries=1", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ---------------------------------------------------------------------------
+  grafana:
+  # ---------------------------------------------------------------------------
+    container_name: grafana_prod
+    # Accessible on Tailscale IP:3000 for admin monitoring during data collection.
+    ports:
+      - "0.0.0.0:3000:3000"
+    volumes:
+      - ctf_prod_grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "--tries=1", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+# =============================================================================
+# Isolated prod networks — names differ from dev to allow both stacks on one host
+# =============================================================================
+networks:
+  edge:
+    name: ctf_prod_edge
+  backend:
+    name: ctf_prod_backend
+
+# =============================================================================
+# Prod-only named volumes — completely separate from dev volumes
+# =============================================================================
+volumes:
+  ctf_prod_ctfd_db:
+  ctf_prod_ctfd_uploads:
+  ctf_prod_ctfd_data:
+  ctf_prod_analytics_db:
+  ctf_prod_grafana_data:
