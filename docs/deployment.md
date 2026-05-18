@@ -121,3 +121,48 @@ docker exec -it analytics_db psql -U analytics -d analytics
 | Analytics DB | 5433 | `localhost:5433` |
 | NC challenges | 31001–31999 | dynamic |
 | SSH challenges | 32223–32999 | dynamic |
+
+---
+
+## Production Deployment (Parallels VM + Tailscale)
+
+For IRB-approved data collection with ~60 participants accessing via Tailscale, use the production deployment scripts in `deploy/`. This uses Docker Compose override to keep the base `docker-compose.yml` untouched.
+
+### Key differences from dev
+
+| | Dev | Production |
+|---|---|---|
+| Compose files | `docker-compose.yml` | `docker-compose.yml` + `docker-compose.prod.yml` |
+| Env file | `.env` | `.env.prod` |
+| Container names | `traefik`, `ctfd`, … | `traefik_prod`, `ctfd_prod`, … |
+| Volumes | `ctfd_db`, `analytics_db`, … | `ctf_prod_ctfd_db`, `ctf_prod_analytics_db`, … |
+| Networks | `ctf_edge`, `ctf_backend` | `ctf_prod_edge`, `ctf_prod_backend` |
+| analytics_db port | `0.0.0.0:5433` | `127.0.0.1:5433` (localhost only) |
+| Restart policy | `unless-stopped` | `unless-stopped` (survives VM reboot) |
+| Healthchecks | DB services only | All 7 services (30s / 3 retries) |
+
+### Deployment lifecycle
+
+```
+[DEV MACHINE]                          [PROD VM]
+bash deploy/cut-release.sh     →    git checkout v1.0.0-data-collection
+git push origin <tag>          →    bash deploy/start-production.sh
+                                    bash deploy/preflight-check.sh
+                                    bash deploy/monitor.sh       (during round)
+                                    bash deploy/stop-production.sh
+```
+
+### Script reference
+
+| Script | Description |
+|---|---|
+| `deploy/setup-prod-vm.sh` | One-time VM setup: Docker, Tailscale, deploy user |
+| `deploy/cut-release.sh` | Run pytest (100%), create annotated git tag |
+| `deploy/start-production.sh` | Safety checks → DB reset → compose up → healthcheck wait |
+| `deploy/preflight-check.sh` | 8-point gate: tag / env / health / DB state / provenance / Tailscale / disk / smoke |
+| `deploy/monitor.sh` | Live 10s stats: CPU/RAM/disk/events/active users |
+| `deploy/stop-production.sh` | Final backup → compose down (volumes intact) |
+| `deploy/backup-db.sh` | pg_dump → deploy/backups/prod-YYYYMMDD-HHMM.sql.gz (72h retention) |
+| `deploy/install-backup-cron.sh` | Hourly cron backup; `--uninstall` to remove |
+
+See **[deploy/README.md](../deploy/README.md)** for full instructions, troubleshooting, and rollback procedure.
