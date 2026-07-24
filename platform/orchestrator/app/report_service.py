@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import time
+import warnings
 from typing import Any, Dict, List
 
 import psycopg2
@@ -23,7 +24,6 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
 
 if not GEMINI_API_KEY and not OPENAI_API_KEY:
-    import warnings
     warnings.warn("Neither GEMINI_API_KEY nor OPENAI_API_KEY is set — AI report generation will use rule-based fallback only")
 GENERATE_REPORT_ALL_GAP_SECONDS = float(os.getenv("GENERATE_REPORT_ALL_GAP_SECONDS", "15"))
 ROUND_COHORT_PATH = os.path.join(os.path.dirname(__file__), "data", "round_cohort.csv")
@@ -1052,6 +1052,31 @@ def analyze_user_with_gemini(user_key: str, stats: Dict[str, Any], scores: Dict[
     }
 
 
+def current_study_round() -> int | None:
+    """
+    Which of the three study rounds reports are currently being generated for.
+
+    Set STUDY_ROUND=1|2|3 for the duration of each round so that every report
+    saved during it is attributable to that round; H1 compares round 1 against
+    round 3 and cannot be computed otherwise. Left unset (the default), reports
+    are stored with round_no NULL and excluded from the longitudinal analysis
+    rather than being silently mislabelled — which is the behaviour you want for
+    ad-hoc regeneration outside a round.
+    """
+    raw = os.getenv("STUDY_ROUND", "").strip()
+    if not raw:
+        return None
+    try:
+        value = int(raw)
+    except ValueError:
+        warnings.warn(f"STUDY_ROUND={raw!r} is not an integer — storing round_no as NULL")
+        return None
+    if value not in (1, 2, 3):
+        warnings.warn(f"STUDY_ROUND={value} is outside 1..3 — storing round_no as NULL")
+        return None
+    return value
+
+
 def save_skill_report(user_key: str, stats: Dict[str, Any], scores: Dict[str, Any]) -> int:
     with get_db() as conn:
         with conn.cursor() as cur:
@@ -1059,6 +1084,7 @@ def save_skill_report(user_key: str, stats: Dict[str, Any], scores: Dict[str, An
                 """
                 INSERT INTO user_skill_reports (
                     user_key,
+                    round_no,
                     total_opened,
                     total_started,
                     total_ready,
@@ -1076,11 +1102,12 @@ def save_skill_report(user_key: str, stats: Dict[str, Any], scores: Dict[str, An
                     overall_level,
                     summary_json
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 RETURNING id
                 """,
                 (
                     user_key,
+                    current_study_round(),
                     stats["total_opened"],
                     stats["total_started"],
                     stats["total_ready"],

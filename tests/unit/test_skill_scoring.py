@@ -211,3 +211,27 @@ class TestBounded:
         for v in result.values():
             if isinstance(v, (int, float)):
                 assert not (v != v)  # NaN check
+
+
+class TestStudyRound:
+    """STUDY_ROUND drives round_no on saved skill reports (migration 011)."""
+
+    @pytest.mark.parametrize("raw,expected", [
+        ("1", 1), ("2", 2), ("3", 3), (" 2 ", 2),
+    ])
+    def test_valid_rounds(self, raw, expected, monkeypatch):
+        from app.report_service import current_study_round
+        monkeypatch.setenv("STUDY_ROUND", raw)
+        assert current_study_round() == expected
+
+    @pytest.mark.parametrize("raw", ["", "   ", "0", "4", "-1", "abc", "1.5"])
+    def test_invalid_becomes_none(self, raw, monkeypatch):
+        """Anything unusable must store NULL, never a wrong round."""
+        from app.report_service import current_study_round
+        monkeypatch.setenv("STUDY_ROUND", raw)
+        assert current_study_round() is None
+
+    def test_unset_is_none(self, monkeypatch):
+        from app.report_service import current_study_round
+        monkeypatch.delenv("STUDY_ROUND", raising=False)
+        assert current_study_round() is None

@@ -67,11 +67,15 @@ def _get_conn() -> psycopg2.extensions.connection:
 
 def _fetch_scores(condition: str | None = None, round_no: int | None = None) -> list[dict]:
     """Fetch skill scores, optionally filtered by condition and/or round."""
+    # NOTE: round_no lives on user_skill_reports (one report per participant per
+    # round), not on experiment_assignment (one row per participant for the whole
+    # study). Selecting e.round_no raised "column e.round_no does not exist" and
+    # broke every H1 test. See database/migrations/011_skill_report_round.sql.
     sql = """
         SELECT r.user_key, r.accuracy_score, r.persistence_score,
                r.web_recon_score, r.protocol_score, r.ssh_pivot_score,
                r.blue_analysis_score, r.time_efficiency_score,
-               e.condition, e.round_no
+               e.condition, r.round_no
         FROM user_skill_reports r
         LEFT JOIN experiment_assignment e ON r.user_key = CAST(e.user_id AS TEXT)
     """
@@ -80,7 +84,7 @@ def _fetch_scores(condition: str | None = None, round_no: int | None = None) -> 
         clauses.append("e.condition = %s")
         params.append(condition)
     if round_no is not None:
-        clauses.append("e.round_no = %s")
+        clauses.append("r.round_no = %s")
         params.append(round_no)
     if clauses:
         sql += " WHERE " + " AND ".join(clauses)

@@ -370,40 +370,134 @@ def exploratory_factor_analysis() -> dict[str, Any]:
 # AI Feedback Quality Assessment (G3)
 # ---------------------------------------------------------------------------
 
+# Generator tiers a rated feedback report can originate from. Kept in sync with
+# the CHECK constraint in database/migrations/010_feedback_source.sql.
+FEEDBACK_SOURCES = ("gemini", "openai", "rule_based", "unknown")
+
+# report_service labels the tier it used as "gemini" / "openai" /
+# "rule-based-fallback" (see analyze_user_with_gemini), and records the exact
+# model in ai_reports.model_name. Both forms are normalized here.
+_SOURCE_ALIASES = {
+    "gemini": "gemini",
+    "openai": "openai",
+    "rule-based-fallback": "rule_based",
+    "rule_based": "rule_based",
+    "rule-based": "rule_based",
+}
+
+
+def normalize_feedback_source(value: Optional[str]) -> str:
+    """
+    Map a provider or model label from report_service onto a stored source tier.
+
+    Accepts either a provider name ("gemini") or a model id
+    ("gemini-2.5-flash", "gpt-4o-mini"). Unrecognized values become "unknown"
+    rather than raising, so that a rating is never lost — but "unknown" is
+    excluded from the LLM vs. rule-based comparison.
+    """
+    if not value:
+        return "unknown"
+    v = str(value).strip().lower()
+    if v in _SOURCE_ALIASES:
+        return _SOURCE_ALIASES[v]
+    if v.startswith("gemini"):
+        return "gemini"
+    if v.startswith(("gpt", "openai", "o1", "o3")):
+        return "openai"
+    if "rule" in v:
+        return "rule_based"
+    return "unknown"
+
+
+# The rubric is four-dimensional. specificity is kept distinct from
+# actionability because Shute (2008) treats them as separate properties of
+# formative feedback: a comment can be specific ("you retried TCP auth 16 times")
+# without being actionable, and vice versa.
+FEEDBACK_DIMENSIONS = ("relevance", "specificity", "actionability", "accuracy")
+
+
 @dataclass
 class FeedbackRating:
     rater_id: str
     participant_code: str
     round_no: int
+    feedback_source: str  # generator tier; one of FEEDBACK_SOURCES
     relevance: int       # 1–5: feedback is relevant to actual performance
+    specificity: int     # 1–5: feedback cites concrete evidence, not generic advice
     actionability: int   # 1–5: learner can act on the feedback
     accuracy: int        # 1–5: content is factually correct, no hallucination
+    model_name: Optional[str] = None   # exact model id, for reproducibility
     comment: Optional[str] = None
 
 
 def store_feedback_rating(r: FeedbackRating) -> None:
     """
     Persist one AI feedback quality rating. Idempotent on
-    (rater_id, participant_code, round_no).
+    (rater_id, participant_code, round_no, feedback_source).
     """
-    for field, val in [("relevance", r.relevance), ("actionability", r.actionability), ("accuracy", r.accuracy)]:
+    for field in FEEDBACK_DIMENSIONS:
+        val = getattr(r, field)
         if not (1 <= val <= 5):
             raise ValueError(f"{field} must be between 1 and 5, got {val}")
+
+    source = normalize_feedback_source(r.feedback_source)
+    if source not in FEEDBACK_SOURCES:
+        raise ValueError(f"feedback_source must be one of {FEEDBACK_SOURCES}, got {r.feedback_source!r}")
 
     with _get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
                 INSERT INTO feedback_rating
-                    (rater_id, participant_code, round_no, relevance, actionability, accuracy, comment)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (rater_id, participant_code, round_no)
+                    (rater_id, participant_code, round_no, feedback_source,
+                     relevance, specificity, actionability, accuracy, model_name, comment)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (rater_id, participant_code, round_no, feedback_source)
                 DO NOTHING
                 """,
-                (r.rater_id, r.participant_code, r.round_no,
-                 r.relevance, r.actionability, r.accuracy, r.comment),
+                (r.rater_id, r.participant_code, r.round_no, source,
+                 r.relevance, r.specificity, r.actionability, r.accuracy,
+                 r.model_name, r.comment),
             )
         conn.commit()
+
+
+def _summarize_ratings(rows: list[dict]) -> dict[str, Any]:
+    """Per-dimension descriptives plus mean pairwise Cohen's kappa on relevance."""
+    import numpy as np
+
+    out: dict[str, Any] = {"n_ratings": len(rows)}
+
+    # Tolerate rows that predate a dimension being recorded rather than raising.
+    for dim in FEEDBACK_DIMENSIONS:
+        present = [r[dim] for r in rows if r.get(dim) is not None]
+        if not present:
+            continue
+        vals = np.array(present, dtype=float)
+        out[dim] = {
+            "mean": round(float(vals.mean()), 3),
+            "sd": round(float(vals.std(ddof=1)), 3) if len(vals) > 1 else 0.0,
+            "pct_ge_4": round(float((vals >= 4).mean() * 100), 1),
+        }
+
+    # Cohen's kappa between pairs of raters on relevance (treat as categorical)
+    rater_ids = sorted({r["rater_id"] for r in rows})
+    kappas = []
+    for i in range(len(rater_ids)):
+        for j in range(i + 1, len(rater_ids)):
+            r1 = {(r["participant_code"], r["round_no"]): r["relevance"]
+                  for r in rows if r["rater_id"] == rater_ids[i]}
+            r2 = {(r["participant_code"], r["round_no"]): r["relevance"]
+                  for r in rows if r["rater_id"] == rater_ids[j]}
+            common = set(r1) & set(r2)
+            if len(common) >= 2:
+                a = np.array([r1[k] for k in common])
+                b = np.array([r2[k] for k in common])
+                kappas.append(_cohens_kappa(a, b))
+    out["cohens_kappa_relevance"] = (
+        round(float(np.mean(kappas)), 4) if kappas else None
+    )
+    return out
 
 
 def feedback_quality_summary() -> dict[str, Any]:
@@ -411,12 +505,14 @@ def feedback_quality_summary() -> dict[str, Any]:
     Aggregate quality metrics across all expert feedback ratings.
 
     Returns:
-        mean/SD per dimension, Cohen's kappa for relevance/accuracy
-        agreement (as categorical), percentage rated >= 4.
+        Overall mean/SD/pct>=4 per dimension and Cohen's kappa, plus the same
+        statistics broken down by generator tier under "by_source" so that
+        LLM-generated feedback can be compared against the rule-based fallback
+        (RQ4). Rows whose source is "unknown" are reported but should be
+        excluded from that comparison.
     """
     try:
         import numpy as np
-        from scipy.stats import pearsonr
     except ImportError:
         return {"skipped": True, "reason": "numpy/scipy not installed"}
 
@@ -428,37 +524,14 @@ def feedback_quality_summary() -> dict[str, Any]:
     if not rows:
         return {"n_ratings": 0, "message": "no ratings yet"}
 
-    dims = ["relevance", "actionability", "accuracy"]
-    summary: dict[str, Any] = {"n_ratings": len(rows)}
+    summary: dict[str, Any] = _summarize_ratings(rows)
 
-    for dim in dims:
-        vals = np.array([r[dim] for r in rows], dtype=float)
-        summary[dim] = {
-            "mean": round(float(vals.mean()), 3),
-            "sd": round(float(vals.std(ddof=1)), 3) if len(vals) > 1 else 0.0,
-            "pct_ge_4": round(float((vals >= 4).mean() * 100), 1),
-        }
-
-    # Cohen's kappa between pairs of raters on relevance (treat as categorical)
-    rater_ids = list({r["rater_id"] for r in rows})
-    if len(rater_ids) >= 2:
-        kappas = []
-        for i in range(len(rater_ids)):
-            for j in range(i + 1, len(rater_ids)):
-                r1 = {(r["participant_code"], r["round_no"]): r["relevance"]
-                      for r in rows if r["rater_id"] == rater_ids[i]}
-                r2 = {(r["participant_code"], r["round_no"]): r["relevance"]
-                      for r in rows if r["rater_id"] == rater_ids[j]}
-                common = set(r1) & set(r2)
-                if len(common) >= 2:
-                    a = np.array([r1[k] for k in common])
-                    b = np.array([r2[k] for k in common])
-                    kappas.append(_cohens_kappa(a, b))
-        summary["cohens_kappa_relevance"] = (
-            round(float(np.mean(kappas)), 4) if kappas else None
-        )
-    else:
-        summary["cohens_kappa_relevance"] = None
+    # Pre-010 rows (and mocked rows in tests) may lack the column entirely.
+    by_source: dict[str, Any] = {}
+    for src in sorted({(r.get("feedback_source") or "unknown") for r in rows}):
+        subset = [r for r in rows if (r.get("feedback_source") or "unknown") == src]
+        by_source[src] = _summarize_ratings(subset)
+    summary["by_source"] = by_source
 
     return summary
 
