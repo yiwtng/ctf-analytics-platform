@@ -210,6 +210,7 @@ def get_latest_ai_report(user_key: str):
                     generated_at
                 FROM user_ai_reports
                 WHERE user_key = :user_key
+                  AND report_role = 'primary'   -- never serve a shadow report to a learner
                 ORDER BY generated_at DESC
                 LIMIT 1
             """),

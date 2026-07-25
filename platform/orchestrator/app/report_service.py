@@ -170,6 +170,7 @@ def _get_latest_ai_row(user_key: str) -> Dict[str, Any] | None:
                 SELECT *
                 FROM user_ai_reports
                 WHERE user_key = %s
+                  AND report_role = 'primary'   -- never serve a shadow report to a learner
                 ORDER BY generated_at DESC, id DESC
                 LIMIT 1
                 """,
@@ -1052,6 +1053,37 @@ def analyze_user_with_gemini(user_key: str, stats: Dict[str, Any], scores: Dict[
     }
 
 
+REPORT_ROLES = ("primary", "shadow")
+
+# Label recorded on the deliberately-generated rule-based counterpart. Kept distinct
+# from "rule-based-fallback" so that a shadow report is never confused with a primary
+# report that fell back because the model providers were unavailable — the two mean
+# very different things when interpreting RQ4.
+SHADOW_MODEL_LABEL = "rule-based-shadow"
+
+# Whether to generate the rule-based counterpart alongside each LLM report, for the
+# within-subject feedback-quality comparison (RQ4). Defaults on: this deployment exists
+# to run the study, and a silently missing shadow report cannot be reconstructed later.
+GENERATE_SHADOW_REPORTS = os.getenv("GENERATE_SHADOW_REPORTS", "true").strip().lower() not in (
+    "0", "false", "no", "off", ""
+)
+
+
+def _is_model_generated(ai_result: Dict[str, Any]) -> bool:
+    """
+    True when the report came from an LLM rather than the rule-based generator.
+
+    Unknown or missing provenance returns False: without positive evidence that an LLM
+    produced the primary, generating a rule-based "comparison" risks pairing two
+    rule-based reports and reporting the result as an LLM-vs-rules contrast.
+    """
+    model = ai_result.get("model")
+    if not isinstance(model, str):
+        return False
+    model = model.strip().lower()
+    return bool(model) and "rule" not in model
+
+
 def current_study_round() -> int | None:
     """
     Which of the three study rounds reports are currently being generated for.
@@ -1137,7 +1169,18 @@ def save_skill_report(user_key: str, stats: Dict[str, Any], scores: Dict[str, An
     return inserted_id
 
 
-def save_ai_report(user_key: str, ai_result: Dict[str, Any]) -> int:
+def save_ai_report(user_key: str, ai_result: Dict[str, Any], report_role: str = "primary") -> int:
+    """
+    Persist one AI report.
+
+    report_role distinguishes the report shown to the learner ("primary" — the
+    intervention itself) from the rule-based counterpart generated purely for blind
+    expert comparison ("shadow"). Shadow reports must never reach the learner; every
+    read path filters on report_role = 'primary'. See migration 012.
+    """
+    if report_role not in REPORT_ROLES:
+        raise ValueError(f"report_role must be one of {REPORT_ROLES}, got {report_role!r}")
+
     ai_report = ai_result["ai_report"]
 
     with get_db() as conn:
@@ -1146,6 +1189,8 @@ def save_ai_report(user_key: str, ai_result: Dict[str, Any]) -> int:
                 """
                 INSERT INTO user_ai_reports (
                     user_key,
+                    report_role,
+                    round_no,
                     model,
                     profile,
                     strengths,
@@ -1155,11 +1200,13 @@ def save_ai_report(user_key: str, ai_result: Dict[str, Any]) -> int:
                     confidence,
                     raw_response
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 RETURNING id
                 """,
                 (
                     user_key,
+                    report_role,
+                    current_study_round(),
                     ai_result.get("model", "gemini"),
                     json.dumps(ai_report.get("profile", []), ensure_ascii=False),
                     json.dumps(ai_report.get("strengths", []), ensure_ascii=False),
@@ -1269,6 +1316,7 @@ def generate_user_report(user_key: str, user_id: int | None = None) -> Dict[str,
             "condition": "control",
         }
 
+    shadow_report_id = None
     cached_ai = _get_cached_ai_result(user_key, input_signature)
 
     if cached_ai:
@@ -1288,14 +1336,37 @@ def generate_user_report(user_key: str, user_id: int | None = None) -> Dict[str,
             stats=stats,
             scores=scores,
         )
-        ai_report_id = save_ai_report(user_key, ai_result)
+        ai_report_id = save_ai_report(user_key, ai_result, report_role="primary")
         ai_cached = False
+
+        # Within-subject counterpart for the feedback-quality comparison (RQ4): render
+        # the SAME stats and scores with the rule-based generator and store it as a
+        # shadow report. It is never shown to the learner — the treatment remains the
+        # LLM report alone — and exists solely so experts can rate both blind.
+        #
+        # Skipped when the primary itself fell back to rule-based output, since the two
+        # would be identical and the comparison meaningless.
+        if GENERATE_SHADOW_REPORTS and _is_model_generated(ai_result):
+            try:
+                shadow_result = {
+                    "model": SHADOW_MODEL_LABEL,
+                    "ai_report": build_rule_based_ai_report(user_key, stats, scores),
+                    "raw_response": {
+                        "generated_for": "rq4_within_subject_comparison",
+                        "paired_primary_report_id": ai_report_id,
+                        "paired_primary_model": ai_result.get("model"),
+                    },
+                }
+                shadow_report_id = save_ai_report(user_key, shadow_result, report_role="shadow")
+            except Exception as exc:  # never let the comparison break the learner's report
+                warnings.warn(f"shadow report generation failed for {user_key}: {exc}")
 
     return {
         "status": "ok",
         "user_key": user_key,
         "skill_report_id": skill_report_id,
         "ai_report_id": ai_report_id,
+        "shadow_report_id": shadow_report_id,
         "scores": scores,
         "ai_report": ai_result["ai_report"],
         "ai_cached": ai_cached,
@@ -1323,6 +1394,7 @@ def get_latest_user_report(user_key: str) -> Dict[str, Any]:
                 SELECT *
                 FROM user_ai_reports
                 WHERE user_key = %s
+                  AND report_role = 'primary'   -- never serve a shadow report to a learner
                 ORDER BY generated_at DESC, id DESC
                 LIMIT 1
                 """,
