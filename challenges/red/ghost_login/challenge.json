@@ -1,0 +1,8 @@
+{
+  "id": "red_ghost_login",
+  "name": "Red - Ghost Login",
+  "type": "web",
+  "internal_port": 5000,
+  "mem_limit": "512m",
+  "cpu_limit": "0.5"
+}

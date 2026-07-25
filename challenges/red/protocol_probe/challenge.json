@@ -1,0 +1,8 @@
+{
+  "id": "red_protocol_probe",
+  "name": "Red - Protocol Probe",
+  "type": "nc",
+  "internal_port": 1337,
+  "mem_limit": "512m",
+  "cpu_limit": "0.5"
+}

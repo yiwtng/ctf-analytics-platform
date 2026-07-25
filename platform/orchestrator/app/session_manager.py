@@ -12,7 +12,17 @@ client = docker.from_env()
 BASE_PATH = "/app/challenges"
 TRAEFIK_NETWORK = os.getenv("DOCKER_NETWORK", "ctf_edge")
 WEB_BASE_DOMAIN = os.getenv("WEB_BASE_DOMAIN")
+# Browser-facing base, used by the CTFd admin pages. Must be reachable from the
+# admin's machine, so it points at the public address / reverse proxy.
 ORCH_PUBLIC_BASE = os.getenv("ORCH_PUBLIC_BASE")
+
+# Address challenge containers use to POST telemetry. This is NOT the same thing as
+# ORCH_PUBLIC_BASE: challenges run inside the Docker network, and the public base
+# resolves to the reverse proxy on :80, which routes by Host to CTFd and has no
+# /event route — so every challenge-side event was silently answered with 404 and
+# lost. The container-network address reaches the orchestrator directly and keeps
+# working even if the external/VPN address is down.
+ORCH_EVENT_BASE = (os.getenv("ORCH_EVENT_BASE") or "").strip() or "http://orchestrator:8001"
 PUBLIC_NC_HOST = os.getenv("PUBLIC_NC_HOST")
 PUBLIC_SSH_HOST = os.getenv("PUBLIC_SSH_HOST")
 
@@ -79,7 +89,7 @@ def build_env_vars(session_id: str, user_id: str, challenge_id: str) -> dict:
         "SESSION_ID": session_id,
         "USER_ID": user_id,
         "CHALLENGE_ID": challenge_id,
-        "ORCH_URL": f"{ORCH_PUBLIC_BASE}/event"
+        "ORCH_URL": f"{ORCH_EVENT_BASE}/event"
     }
 
 
