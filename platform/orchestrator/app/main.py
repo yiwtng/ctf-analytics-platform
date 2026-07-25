@@ -388,9 +388,11 @@ def admin_enrollment_assessment(request: Request, participant_code: str, body: A
 # =========================
 @app.post("/generate_report/{user_key}")
 @limiter.limit("10/minute")
-def generate_report(request: Request, user_key: str):
+def generate_report(request: Request, user_key: str, allow_unassigned_ai: bool = False):
     audit_log.info("GENERATE_REPORT user_key=%s ip=%s", user_key, request.client.host if request.client else "unknown")
-    return generate_user_report(user_key)
+    # The condition gate resolves inside generate_user_report from user_key; passing
+    # nothing here previously meant control participants received AI feedback too.
+    return generate_user_report(user_key, allow_unassigned_ai=allow_unassigned_ai)
 
 
 @app.post("/generate_report_all")

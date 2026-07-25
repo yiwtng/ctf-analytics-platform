@@ -1284,14 +1284,44 @@ def get_user_percentile(user_key: str) -> int | None:
     return percentile
 
 
-def generate_user_report(user_key: str, user_id: int | None = None) -> Dict[str, Any]:
+def _user_id_from_key(user_key: str) -> int | None:
     """
-    Generate skill report and (conditionally) AI report for a user.
+    Recover the CTFd user id a user_key refers to.
 
-    AI report is only generated when the user is assigned to the TREATMENT
-    condition. Control-group users receive skill scores only.
-    Pass `user_id` (CTFd integer ID) to enable experiment gating;
-    omit to always generate AI report (legacy / admin use).
+    Participant keys are the CTFd user id rendered as text — the analysis joins on
+    exactly that (user_skill_reports.user_key = CAST(experiment_assignment.user_id
+    AS TEXT)). Keys that are not numeric belong to ad-hoc or administrative users
+    who are not part of the experiment.
+    """
+    try:
+        return int(str(user_key).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def generate_user_report(
+    user_key: str,
+    user_id: int | None = None,
+    allow_unassigned_ai: bool = False,
+) -> Dict[str, Any]:
+    """
+    Generate the skill report and, only for the treatment condition, the AI report.
+
+    The condition gate is resolved here rather than trusted from the caller.
+    Previously the gate was `user_id is None or is_treatment(user_id)`, and neither
+    call site passed user_id — so it always short-circuited to True and every
+    control participant received the full LLM feedback. The experiment had no
+    contrast, and nothing about the behaviour looked wrong from outside: reports
+    generated normally and the response even labelled the user "treatment".
+
+    user_id is therefore derived from user_key when the caller does not supply it,
+    and an unresolvable key is treated as NOT in the treatment group. Failing
+    closed costs an administrator an explicit flag; failing open costs the study
+    its primary research question.
+
+    allow_unassigned_ai re-enables generation for keys that carry no experiment
+    assignment (administrative regeneration, demos). It never overrides an explicit
+    control assignment.
     """
     from app.experiment import is_treatment  # local import to avoid circular deps
 
@@ -1301,8 +1331,15 @@ def generate_user_report(user_key: str, user_id: int | None = None) -> Dict[str,
 
     skill_report_id = save_skill_report(user_key, stats, scores)
 
-    # Experiment gate: skip AI for control-group users
-    generate_ai = (user_id is None) or is_treatment(user_id)
+    # Experiment gate: AI feedback is the intervention, so it must reach the
+    # treatment group only.
+    if user_id is None:
+        user_id = _user_id_from_key(user_key)
+
+    if user_id is not None:
+        generate_ai = is_treatment(user_id)
+    else:
+        generate_ai = allow_unassigned_ai
 
     if not generate_ai:
         return {
@@ -1313,7 +1350,9 @@ def generate_user_report(user_key: str, user_id: int | None = None) -> Dict[str,
             "scores": scores,
             "ai_report": None,
             "ai_cached": False,
-            "condition": "control",
+            # Reported from the resolved assignment, not assumed: the previous
+            # hard-coded values mislabelled control users as "treatment".
+            "condition": "control" if user_id is not None else "unassigned",
         }
 
     shadow_report_id = None
@@ -1370,7 +1409,7 @@ def generate_user_report(user_key: str, user_id: int | None = None) -> Dict[str,
         "scores": scores,
         "ai_report": ai_result["ai_report"],
         "ai_cached": ai_cached,
-        "condition": "treatment",
+        "condition": "treatment" if user_id is not None else "unassigned",
     }
 
 
@@ -1483,6 +1522,7 @@ def generate_all_reports() -> Dict[str, Any]:
 
     for index, user_key in enumerate(users):
         try:
+            # Batch generation must respect the experiment gate as well.
             result = generate_user_report(user_key)
             results.append(result)
         except Exception as exc:
