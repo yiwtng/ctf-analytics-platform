@@ -166,6 +166,12 @@ def start_session(user_id: str, challenge_id: str):
             ports=ports,
             mem_limit=challenge.get("mem_limit", "512m"),
             nano_cpus=int(float(challenge.get("cpu_limit", "0.5")) * 1e9),
+            # Same network as the orchestrator, so the challenge can resolve it and
+            # post telemetry. Without this the container lands on the default bridge,
+            # ORCH_URL fails to resolve, and every TCP_*/SSH_* event is silently lost
+            # -- taking the Protocol and SSH Pivot dimensions with it. Published ports
+            # still work on a user-defined network.
+            network=TRAEFIK_NETWORK,
             environment=env_vars,
         )
 
@@ -202,6 +208,12 @@ def start_session(user_id: str, challenge_id: str):
             ports=ports,
             mem_limit=challenge.get("mem_limit", "512m"),
             nano_cpus=int(float(challenge.get("cpu_limit", "0.5")) * 1e9),
+            # Same network as the orchestrator, so the challenge can resolve it and
+            # post telemetry. Without this the container lands on the default bridge,
+            # ORCH_URL fails to resolve, and every TCP_*/SSH_* event is silently lost
+            # -- taking the Protocol and SSH Pivot dimensions with it. Published ports
+            # still work on a user-defined network.
+            network=TRAEFIK_NETWORK,
             environment=env_vars,
         )
 

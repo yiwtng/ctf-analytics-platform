@@ -93,7 +93,16 @@ sh=$(docker exec "$ORCH_C" python -c "from app.report_service import GENERATE_SH
 hdr "4. Pipeline produced data"
 
 if [ -z "$USER_KEY" ]; then
-  USER_KEY=$(q "SELECT user_key FROM events ORDER BY ts DESC LIMIT 1;")
+  # Prefer a user that actually has a skill report: picking merely the latest event
+  # can select someone whose report was never generated, which then reports as a
+  # pipeline failure when it is only an incomplete pilot.
+  USER_KEY=$(q "SELECT user_key FROM user_skill_reports ORDER BY id DESC LIMIT 1;")
+  if [ -n "$USER_KEY" ]; then
+    echo "  (selected $USER_KEY — most recent user with a skill report)"
+  else
+    USER_KEY=$(q "SELECT user_key FROM events ORDER BY ts DESC LIMIT 1;")
+    [ -n "$USER_KEY" ] && echo "  (no skill reports exist yet; falling back to latest event user $USER_KEY)"
+  fi
 fi
 if [ -z "$USER_KEY" ]; then
   bad "no events at all" "play through the challenges first, then re-run"
@@ -112,11 +121,15 @@ done
 
 n_sk=$(q "SELECT count(*) FROM user_skill_reports WHERE user_key='$USER_KEY';")
 [ "$n_sk" -gt 0 ] && ok "skill report saved ($n_sk)" \
-                  || bad "no skill report" "save_skill_report() failed — check orchestrator logs"
+                  || bad "no skill report for $USER_KEY" "run: POST /generate_report/$USER_KEY — if that errors, check orchestrator logs"
 
-nulls=$(q "SELECT count(*) FROM user_skill_reports WHERE user_key='$USER_KEY' AND (round_no IS NULL OR overall_level IS NULL);")
-[ "$nulls" = "0" ] && ok "skill reports have round_no and overall_level" \
-                   || bad "$nulls skill report(s) missing round_no/overall_level" "STUDY_ROUND unset when generated?"
+if [ "$n_sk" -gt 0 ]; then
+  nulls=$(q "SELECT count(*) FROM user_skill_reports WHERE user_key='$USER_KEY' AND (round_no IS NULL OR overall_level IS NULL);")
+  [ "$nulls" = "0" ] && ok "skill reports have round_no and overall_level" \
+                     || bad "$nulls skill report(s) missing round_no/overall_level" "STUDY_ROUND unset when generated?"
+else
+  warn "cannot check round_no/overall_level" "no skill report exists for $USER_KEY — nothing to inspect"
+fi
 
 # ---------------------------------------------------------------- RQ4 pairing
 hdr "5. Dual report (RQ4 within-subject)"
@@ -125,10 +138,12 @@ n_pri=$(q "SELECT count(*) FROM user_ai_reports WHERE user_key='$USER_KEY' AND r
 n_sha=$(q "SELECT count(*) FROM user_ai_reports WHERE user_key='$USER_KEY' AND report_role='shadow';")
 
 [ "$n_pri" -gt 0 ] && ok "primary (learner-facing) report exists ($n_pri)" \
-                   || bad "no primary report" "user in control group, or AI generation failed"
+                   || bad "no primary report for $USER_KEY" "report not generated yet, user is control group, or AI generation failed"
 
 pri_model=$(q "SELECT model FROM user_ai_reports WHERE user_key='$USER_KEY' AND report_role='primary' ORDER BY id DESC LIMIT 1;")
-if [ "$n_sha" -gt 0 ]; then
+if [ "$n_pri" -eq 0 ]; then
+  warn "cannot judge shadow pairing" "no primary report exists for $USER_KEY, so there is nothing to pair"
+elif [ "$n_sha" -gt 0 ]; then
   ok "shadow (rule-based) report exists ($n_sha) — pair available for expert rating"
 elif [[ "$pri_model" == *rule* ]]; then
   warn "no shadow report, but primary is '$pri_model'" "correct behaviour: pairing rule-based with rule-based is meaningless. Re-run the pilot with working API keys to exercise the real path."
@@ -139,7 +154,9 @@ fi
 # the safety property
 served=$(q "SELECT model FROM user_ai_reports WHERE user_key='$USER_KEY' AND report_role='primary' ORDER BY generated_at DESC, id DESC LIMIT 1;")
 unfiltered=$(q "SELECT model FROM user_ai_reports WHERE user_key='$USER_KEY' ORDER BY generated_at DESC, id DESC LIMIT 1;")
-if [ "$served" = "$unfiltered" ]; then
+if [ -z "$served" ]; then
+  warn "cannot verify the learner-facing query" "no primary report for $USER_KEY — generate one, then re-run"
+elif [ "$served" = "$unfiltered" ]; then
   ok "learner-facing query returns '$served'"
 else
   ok "role filter is doing real work (filtered='$served' vs unfiltered='$unfiltered')"
