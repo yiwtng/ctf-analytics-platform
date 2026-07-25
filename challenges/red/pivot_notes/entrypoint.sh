@@ -34,4 +34,16 @@ chmod 644 /opt/internal/recovery-note.txt
 rm -f /etc/update-motd.d/*
 touch /var/run/utmp
 
+# sshd does not pass this container's environment to user sessions, so the
+# telemetry helper reads the orchestrator address from here instead. Written at
+# startup because SESSION_ID/USER_ID differ per session.
+umask 022
+cat > /etc/ctf-telemetry.env <<ENVEOF
+ORCH_URL="${ORCH_URL:-}"
+SESSION_ID="${SESSION_ID:-}"
+USER_ID="${USER_ID:-}"
+CHALLENGE_ID="${CHALLENGE_ID:-}"
+ENVEOF
+chmod 644 /etc/ctf-telemetry.env
+
 exec /usr/sbin/sshd -D

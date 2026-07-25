@@ -1,0 +1,60 @@
+# Interactive rcfile for the SSH challenge: the learner's normal shell, plus a
+# hook that reports each command as telemetry.
+#
+# Loaded via `bash --rcfile`, which REPLACES the usual startup files, so the
+# learner's own .bashrc is sourced explicitly below — otherwise the challenge
+# would lose its prompt and aliases the moment instrumentation was added.
+
+[ -r /etc/bash.bashrc ] && . /etc/bash.bashrc
+[ -r "$HOME/.bashrc" ] && . "$HOME/.bashrc"
+
+# Needed for `history 1` to return anything in this shell.
+HISTSIZE=${HISTSIZE:-1000}
+set -o history
+
+__ctf_last_logged=""
+__ctf_primed=0
+
+__ctf_report_command() {
+    local status=$?
+    local entry cmd
+
+    # The first prompt fires before the learner has typed anything: history still
+    # holds the last line of this rcfile. Priming at load time cannot work, because
+    # lines entered history as they execute — whatever value was captured, a later
+    # rcfile line would replace it. So swallow the first invocation instead and use
+    # it to seed the de-duplication marker. Anything reported after this is the
+    # learner's own input.
+    if [ "$__ctf_primed" -eq 0 ]; then
+        __ctf_primed=1
+        entry=$(HISTTIMEFORMAT= history 1 2>/dev/null)
+        cmd=${entry#*[0-9]  }
+        __ctf_last_logged=${cmd##[[:space:]]}
+        return $status
+    fi
+
+    # PROMPT_COMMAND also fires on an empty Enter and after the shell starts;
+    # comparing against the previous entry avoids reporting the same command twice.
+    entry=$(HISTTIMEFORMAT= history 1 2>/dev/null)
+    cmd=${entry#*[0-9]  }
+    cmd=${cmd##[[:space:]]}
+
+    if [ -n "$cmd" ] && [ "$cmd" != "$__ctf_last_logged" ]; then
+        __ctf_last_logged="$cmd"
+        /usr/local/bin/ctf-telemetry SSH_COMMAND \
+            "cmd=$cmd" "exit_status=$status" "mode=interactive" &
+        disown 2>/dev/null || true
+    fi
+
+    return $status
+}
+
+# Keep any existing PROMPT_COMMAND rather than clobbering it.
+if [ -z "${PROMPT_COMMAND:-}" ]; then
+    PROMPT_COMMAND="__ctf_report_command"
+else
+    case "$PROMPT_COMMAND" in
+        *__ctf_report_command*) : ;;
+        *) PROMPT_COMMAND="__ctf_report_command; $PROMPT_COMMAND" ;;
+    esac
+fi

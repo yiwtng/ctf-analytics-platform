@@ -1,0 +1,38 @@
+#!/bin/bash
+# Post one telemetry event for the SSH challenge.
+#
+#   ctf-telemetry EVENT_TYPE [key=value ...]
+#
+# sshd does not pass the container's environment to user sessions, so the
+# orchestrator address is read from a file the entrypoint writes at startup
+# rather than from the inherited environment.
+#
+# Always exits 0: telemetry must never break, slow, or leak into the learner's
+# shell. A dropped event costs one data point; a wrapper that errors costs the
+# session.
+
+set -u
+
+[ -r /etc/ctf-telemetry.env ] && . /etc/ctf-telemetry.env
+
+[ -n "${ORCH_URL:-}" ] || exit 0
+[ $# -ge 1 ] || exit 0
+
+event_type="$1"; shift
+
+args=(
+  --data-urlencode "event_type=${event_type}"
+  --data-urlencode "user_key=${USER_ID:-}"
+  --data-urlencode "challenge_id=${CHALLENGE_ID:-}"
+  --data-urlencode "session_id=${SESSION_ID:-}"
+)
+
+for kv in "$@"; do
+  args+=(--data-urlencode "$kv")
+done
+
+# -G places the encoded pairs in the query string (which is where the endpoint
+# reads them from) while -X POST keeps the method the endpoint expects.
+curl -sS -m 2 -o /dev/null -X POST -G "${args[@]}" "$ORCH_URL" 2>/dev/null
+
+exit 0

@@ -1,0 +1,30 @@
+#!/bin/bash
+# Login shell for the SSH challenge, wrapping bash to report activity.
+#
+# The SSH Pivot skill dimension is scored from SSH_COMMAND counts, but nothing in
+# the challenge emitted them: the container only ran sshd, so a learner who solved
+# the challenge scored the same as one who never connected. This wrapper is the
+# missing instrumentation.
+#
+# It must handle BOTH ways of using SSH, because participants use both:
+#   ssh host                 -> interactive; ~/.bashrc runs, PROMPT_COMMAND hooks work
+#   ssh host 'cmd'           -> non-interactive; bash is invoked as -c and NEVER
+#                               reads .bashrc, so a PROMPT_COMMAND hook alone would
+#                               silently miss every command issued this way
+#
+# The wrapper is deliberately transparent: it execs the real bash so the learner's
+# experience -- prompt, history, job control -- is unchanged.
+
+/usr/local/bin/ctf-telemetry SSH_CONNECT "tty=${SSH_TTY:-none}" &
+disown 2>/dev/null || true
+
+if [ "${1:-}" = "-c" ]; then
+    # Non-interactive: sshd passes the whole remote command as one argument.
+    shift
+    remote_cmd="$*"
+    /usr/local/bin/ctf-telemetry SSH_COMMAND "cmd=${remote_cmd}" "mode=noninteractive"
+    exec /bin/bash -c "$remote_cmd"
+fi
+
+# Interactive: hand over to bash with an rcfile that installs the per-command hook.
+exec /bin/bash --rcfile /etc/ctf-bashrc -i
