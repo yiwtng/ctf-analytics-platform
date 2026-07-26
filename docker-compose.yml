@@ -34,12 +34,16 @@ services:
       - REDIS_URL=redis://ctfd_cache:6379
       - SECRET_KEY=${CTFD_SECRET_KEY}
       - ORCH_PUBLIC_BASE=${ORCH_PUBLIC_BASE}
+      # Telemetry plugin posts platform-side UI events from inside the container
+      # network; must not be the browser-facing base, which 404s on /event.
+      - ORCH_EVENT_BASE=${ORCH_EVENT_BASE:-http://orchestrator:8001}
     volumes:
       - ctfd_uploads:/var/uploads
       - ctfd_data:/opt/CTFd/CTFd/data
       - ./apt42_ctfd_themes/ftheme:/opt/CTFd/CTFd/themes/ftheme
       - ./apt42_ctfd_themes/watchdogs:/opt/CTFd/CTFd/themes/watchdogs
       - ./platform/ctfd/plugins/admin_reports:/opt/CTFd/CTFd/plugins/admin_reports
+      - ./platform/ctfd/plugins/telemetry:/opt/CTFd/CTFd/plugins/telemetry
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ctfd.rule=Host(`${CTF_DOMAIN}`)"
