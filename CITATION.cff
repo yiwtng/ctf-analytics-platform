@@ -8,7 +8,11 @@ authors:
     orcid: "https://orcid.org/0009-0006-0690-6091"
   - family-names: "Wisitpongphan"
     given-names: "Nawaporn"
-    orcid: "https://orcid.org/0000-0000-0000-0000"   # TODO: replace with real ORCID
+    # TODO(before submission): replace with the real ORCID. The placeholder below
+    # is NOT a valid identifier -- leaving it in a published citation record makes
+    # the metadata resolve to nothing. If the co-author has no ORCID, delete this
+    # line entirely rather than shipping a fake one.
+    orcid: "https://orcid.org/0000-0000-0000-0000"
 license: MIT
 repository-code: "https://github.com/yiwtng/ctf-analytics-platform"
 version: "2.0.0"
