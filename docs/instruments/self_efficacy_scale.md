@@ -160,6 +160,32 @@ primary outcome, and it applies with more force to a self-report measure.
 | `scale_min` / `scale_max` | 0 / 100 |
 | `occasion` | `pre` or `post` |
 
+### How responses reach the database
+
+The platform has no questionnaire UI, and none is needed: the pre administration
+happens **before** the participant touches the platform, so delivering the scale
+on paper or through an institutional form is the natural choice rather than a
+workaround.
+
+Responses are entered into a wide CSV — one row per participant, one column per
+item — and loaded with `tools/research/import_survey_responses.py`. Use
+`docs/instruments/cse_template.csv` as the starting sheet; its column names are
+exactly the item codes the importer expects.
+
+```bash
+# validate first — needs no database, run it on your own machine
+python tools/research/import_survey_responses.py --file pre_round1.csv --round 1 --occasion pre
+
+# then write
+python tools/research/import_survey_responses.py --file pre_round1.csv --round 1 --occasion pre --commit
+```
+
+The importer refuses the whole file if any item code is unknown, any value falls
+outside 0–100, or a participant code repeats. A renamed form field is therefore an
+error rather than a row quietly stored under the wrong item code — which would not
+surface until alpha was computed over the wrong item set. Re-running with a
+corrected file replaces the earlier values instead of duplicating them.
+
 ---
 
 ## Satisfaction items (separate, existing)
