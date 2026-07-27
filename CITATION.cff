@@ -8,11 +8,15 @@ authors:
     orcid: "https://orcid.org/0009-0006-0690-6091"
   - family-names: "Wisitpongphan"
     given-names: "Nawaporn"
-    # TODO(before submission): replace with the real ORCID. The placeholder below
-    # is NOT a valid identifier -- leaving it in a published citation record makes
-    # the metadata resolve to nothing. If the co-author has no ORCID, delete this
-    # line entirely rather than shipping a fake one.
-    orcid: "https://orcid.org/0000-0000-0000-0000"
+    # Identified from the public ORCID registry, not supplied by the author:
+    # sole record for this surname, exact name match, affiliation King Mongkut's
+    # University of Technology North Bangkok, Department of Digital Network and
+    # Information Security Management, with recent works on LLM-based phishing
+    # detection and email classification.
+    # CONFIRM WITH THE CO-AUTHOR BEFORE SUBMISSION. A wrong ORCID attributes
+    # this work to someone else, which is worse than omitting the field; if she
+    # cannot confirm it, delete this line rather than leave it unverified.
+    orcid: "https://orcid.org/0009-0009-9172-0057"
 license: MIT
 repository-code: "https://github.com/yiwtng/ctf-analytics-platform"
 version: "2.0.0"
