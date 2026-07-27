@@ -1,9 +1,14 @@
 """
 Export an anonymized, reproducible research dataset.
 
-Replaces all identifiers with stable participant codes (P001, P002, ...),
+Replaces CTFd identifiers with the participant codes assigned at enrolment,
 strips PII from free-text fields, and writes CSVs + a data dictionary
 suitable for public release alongside the manuscript.
+
+Codes are READ from participant_enrollment, never invented here -- the
+questionnaires and expert ratings already carry codes assigned at consent, and
+a second, independently generated set would join them to the wrong people. See
+build_code_map() for why this matters and how it fails silently.
 
 The code map (user_id → P0XX) is written to a PRIVATE file that must
 never be committed to version control (.gitignore enforces this).
@@ -61,28 +66,78 @@ def _scrub_pii(text: str | None) -> str | None:
     return text
 
 
+class ExportError(RuntimeError):
+    """Raised when the export cannot be produced correctly."""
+
+
 def build_code_map() -> dict[str, str]:
     """
-    Build a deterministic user_key → 'P0XX' mapping sorted by the
-    first event timestamp (proxy for enrollment order).
+    Read the user_key → participant_code mapping from participant_enrollment.
 
-    The private code map is written to data/_code_map_private.csv and
-    must NOT be committed to the public repository.
+    WHY THIS IS READ AND NOT GENERATED
+    An earlier version assigned P001, P002, ... here, ordered by each user's
+    first event timestamp. That silently breaks every questionnaire and expert
+    rating. Those instruments record a participant_code that the researcher
+    wrote on a paper form -- the self-efficacy scale is administered BEFORE the
+    participant touches the platform, so at that moment no event exists and no
+    export-time ordering can be known. Codes minted here would therefore
+    disagree with the codes on the forms, and survey_response rows would join to
+    a different participant's behavioural data.
+
+    Nothing about that failure is visible: every row is present, every value is
+    in range, and the means look ordinary. It would simply be the wrong pairing,
+    and H3 would be computed on mismatched pairs.
+
+    participant_enrollment is the authority: it holds the code assigned at
+    consent, alongside the CTFd user id. events.user_key is that user id as a
+    string.
     """
     with _get_conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT user_key, MIN(ts) AS first_seen
-                FROM events
-                WHERE user_key IS NOT NULL AND user_key <> ''
-                GROUP BY user_key
-                ORDER BY first_seen ASC
+                SELECT ctfd_user_id, participant_code
+                FROM participant_enrollment
+                ORDER BY participant_code
                 """
             )
-            rows = cur.fetchall()
+            enrolled = {str(uid): code for uid, code in cur.fetchall()}
 
-    return {row[0]: f"P{i+1:03d}" for i, row in enumerate(rows)}
+            cur.execute(
+                """
+                SELECT DISTINCT user_key
+                FROM events
+                WHERE user_key IS NOT NULL AND user_key <> ''
+                """
+            )
+            seen = {row[0] for row in cur.fetchall()}
+
+    if not enrolled:
+        raise ExportError(
+            "participant_enrollment is empty. The export cannot assign codes on "
+            "its own: run enrolment first, or verify you are pointed at the right "
+            "database."
+        )
+
+    # An event from someone with no enrolment record means either a test account
+    # reached production or an enrolment was never recorded. Both are reasons to
+    # stop: minting a code here would fold an unconsented or synthetic user into
+    # the released dataset, which is exactly what verify_data_provenance.py exists
+    # to prevent.
+    orphans = sorted(seen - set(enrolled))
+    if orphans:
+        raise ExportError(
+            f"{len(orphans)} user_key(s) have events but no participant_enrollment "
+            f"record: {', '.join(orphans[:10])}"
+            f"{' ...' if len(orphans) > 10 else ''}\n"
+            "Run tools/research/verify_data_provenance.py and resolve these before "
+            "exporting. Do not export a partial dataset."
+        )
+
+    # Enrolled participants with no events are kept in the map: attrition is a
+    # reported outcome, and dropping them here would quietly change the
+    # denominator.
+    return enrolled
 
 
 def _write_code_map(code_map: dict[str, str], out_dir: str) -> None:
@@ -383,8 +438,12 @@ def main() -> None:
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    print("Building participant code map...")
-    code_map = build_code_map()
+    print("Reading participant code map from participant_enrollment...")
+    try:
+        code_map = build_code_map()
+    except ExportError as exc:
+        print(f"\nexport aborted: {exc}", file=sys.stderr)
+        sys.exit(1)
     _write_code_map(code_map, str(out_dir))
 
     print(f"Exporting dataset for {len(code_map)} participants...")

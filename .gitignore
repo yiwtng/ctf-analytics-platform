@@ -48,3 +48,13 @@ analysis/results/*.json
 analysis/results/*.tex
 
 !data/README.md
+
+# Participant linking register — maps codes to real names, contact details and
+# consent dates. This is the one file that de-anonymises the whole dataset, and
+# committing it once puts it in the history permanently. The empty template
+# (participant_register_template.csv) is safe and is tracked; anything else
+# matching these names is not.
+participant_register.csv
+**/participant_register.csv
+*_register_filled*
+*_private.csv
